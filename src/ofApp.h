@@ -1,7 +1,9 @@
 #pragma once
 
 #include "ofMain.h"
-#include "baseclass.hpp"
+#include "AnimationDefinitions.hpp"
+#include "AnimationClass.hpp"
+#include "AnimationManager.hpp"
 
 class ofApp : public ofBaseApp{
 
@@ -22,4 +24,10 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
 		
+        AnimationMovingBezier animation;
+    AnimationMoving animation1;
+    AnimationMoving animation2;
+    AnimationMoving animation3;
+    
+    AnimationManager animationManager;
 };
