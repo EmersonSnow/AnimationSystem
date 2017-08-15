@@ -2,7 +2,7 @@
 
 #include "ofMain.h"
 #include "AnimationDefinitions.hpp"
-#include "AnimationClass.hpp"
+#include "AnimationObjectClasses.hpp"
 #include "AnimationManager.hpp"
 
 class ofApp : public ofBaseApp{
@@ -24,10 +24,10 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
 		
-        AnimationMovingBezier animation;
-    AnimationMoving animation1;
-    AnimationMoving animation2;
-    AnimationMoving animation3;
+        AnimationObjectMovingBezier animation;
+    AnimationObjectMoving animation1;
+    AnimationObjectMoving animation2;
+    AnimationObjectMoving animation3;
     
     AnimationManager animationManager;
 };

@@ -117,6 +117,33 @@ public:
         return playState;
     }
     
+    static int loadImages(string directoryPath)
+    {
+        for (int i = 0; i < animationImages.size(); i++)
+        {
+            if (animationImages[i].directoryPath == directoryPath)
+            {
+                return i;
+            }
+        }
+        ofDirectory d(ofToDataPath(directoryPath));
+        d.listDir();
+        d.sort();
+        
+        AnimationImagesContainer * imagesContainer = new AnimationImagesContainer;
+        imagesContainer->directoryPath = directoryPath;
+        for (int i = 0; i < d.size(); i++)
+        {
+            imagesContainer->images.push_back(*new ofImage);
+            imagesContainer->images[imagesContainer->images.size()-1].load(d.getFile(i));
+        }
+        
+        animationImages.push_back(*imagesContainer);
+        delete imagesContainer;
+        
+        return animationImages.size()-1;
+    }
+    
 private:
     static AnimationEngineMode mode;
     static AnimationPlayState playState;
@@ -125,6 +152,7 @@ private:
     static unsigned long long timeStartPlay;
     static unsigned long long timePause;
     
+    static vector<AnimationImagesContainer> animationImages;
     static void setModeEdit()
     {
         

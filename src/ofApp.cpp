@@ -5,14 +5,14 @@ void ofApp::setup()
 {
     int windowX = ofGetViewportWidth();
     int windowY = ofGetViewportHeight();
-    /*animation.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING_BEZIER, 5, 0, 0, 100, 100, 0);
-    animation.setEndDrawPosition(windowX/2, windowY/2);
-    animation.setEndDrawRotation(360);
+    animation.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING_BEZIER, 5, 0, 0, 100, 100, 0);
+    animation.setMovementContainerPosition(animation.animationMovingContainer, 0, windowY/2);
+    animation.setMovementContainerRotation(animation.animationMovingContainer, 360);
     animation.setLoopImage(true);
     animation.setLoopImageBackward(true);
     animation.setLoopMovement(true);
     animation.setLoopMovementDuration(animation.getTotalDuration()/1000000);
-    animation.setCalcBezierPointNumber(1000);
+    //animation.setCalcBezierPointNumber(1000);
     
     //animation1.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, windowX-100, 0, 100, 100, 0);
     //animation1.setEndDrawPosition(windowX/2, windowY/2);
@@ -20,7 +20,7 @@ void ofApp::setup()
     //animation1.setLoopImage(true);
     //animation1.setLoopImageBackward(true);
     
-    animation2.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, 0, windowY-100, 100, 100, 0);
+    /*animation2.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, 0, windowY-100, 100, 100, 0);
     animation2.setEndDrawPosition(windowX/2, windowY/2);
     animation2.setEndDrawRotation(360);
     animation2.setLoopMovement(true);
@@ -41,17 +41,19 @@ void ofApp::setup()
     animation2.start(time);
     //animation3.start(time);*/
     
-    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, 10, 10, 100, 100, 0, 5);
-    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, 110, 10, 100, 100, 0, 3);
-    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, 210, 10, 100, 100, 0, 1);
-    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, 310, 10, 100, 100, 0, 2);
+    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 10, 10, 100, 100, 0, 5);
+    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 110, 10, 100, 100, 0, 3);
+    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 210, 10, 100, 100, 0, 1);
+    AnimationManagerIndex index = animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 310, 10, 100, 100, 0, 2);
+    //animationManager.getLoopImageTemplate();
+    //animationManager.getAnimationObject(index);
     //animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING_BEZIER, 5, 10, 400, 100, 100, 0, 4);
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
     unsigned long long time = ofGetElapsedTimeMicros();
-    //animation.update(time);
+    animation.update(time);
     //animation1.update(time);
     //animation2.update(time);
     //animation3.update(time);
@@ -61,7 +63,7 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
     animationManager.draw();
-    //animation.draw();
+    animation.draw();
     //animation1.draw();
     //animation2.draw();
     //animation3.draw();
@@ -86,7 +88,7 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-
+    animationManager.mouseDragged(x, y, button);
 }
 
 //--------------------------------------------------------------

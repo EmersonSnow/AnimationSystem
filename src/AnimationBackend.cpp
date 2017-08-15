@@ -15,3 +15,4 @@ unsigned long long AnimationBackend::timeCurrentPlay = 0;
 unsigned long long AnimationBackend::timeStartPlay = 0;
 unsigned long long AnimationBackend::timePause = 0;
 
+vector<AnimationImagesContainer> AnimationBackend::animationImages;
