@@ -12,6 +12,7 @@
 #include "AnimationDefinitions.hpp"
 #include "AnimationBackend.hpp"
 #include "AnimationObjectClasses.hpp"
+#include "AnimationTemplate.hpp"
 #include "ofThread.h"
 #include "ofxGui.h"
 
@@ -22,9 +23,10 @@ public:
     {
         bObjectSelected = false;
         
-        AnimationObjectBaseIndexCount = 0;
-        AnimationObjectMovingIndexCount = 0;
-        AnimationObjectMovingBezierIndexCount = 0;
+        animationObjectBaseIndexCount = 0;
+        animationObjectMovingIndexCount = 0;
+        animationObjectMovingBezierIndexCount = 0;
+        animationObjectUniqueIndexCount = 0;
         
         ofImage * image = new ofImage;
         image->load(ofToDataPath("ui/point.png"));
@@ -97,28 +99,28 @@ public:
             {
                 bool bLoopImage = false;
                 bool bLoopImageBackward = false;
-                int getLoopImageNumber = 0;
+                int setObjectLoopImageNumber = 0;
                 switch (selectedObject.animationClass)
                 {
                     case ANIMATION_CLASS_BASE:
                     {
-                        bLoopImage = animationObjectBaseV[selectedObject.index].getLoopImage();
-                        bLoopImageBackward = animationObjectBaseV[selectedObject.index].getLoopImageBackward();
-                        getLoopImageNumber = animationObjectBaseV[selectedObject.index].getLoopImageNumber();
+                        bLoopImage = vAnimationObjectBase[selectedObject.index].getLoopImage();
+                        bLoopImageBackward = vAnimationObjectBase[selectedObject.index].getLoopImageBackward();
+                        guiObjectLoopImageNumber = vAnimationObjectBase[selectedObject.index].getLoopImageNumber();
                         break;
                     }
                     case ANIMATION_CLASS_MOVING:
                     {
-                        bLoopImage = animationObjectMovingV[selectedObject.index].getLoopImage();
-                        bLoopImageBackward = animationObjectMovingV[selectedObject.index].getLoopImageBackward();
-                        getLoopImageNumber = animationObjectMovingV[selectedObject.index].getLoopImageNumber();
+                        bLoopImage = vAnimationObjectMoving[selectedObject.index].getLoopImage();
+                        bLoopImageBackward = vAnimationObjectMoving[selectedObject.index].getLoopImageBackward();
+                        guiObjectLoopImageNumber = vAnimationObjectMoving[selectedObject.index].getLoopImageNumber();
                         break;
                     }
                     case ANIMATION_CLASS_MOVING_BEZIER:
                     {
-                        bLoopImage = animationObjectMovingBezierV[selectedObject.index].getLoopImage();
-                        bLoopImageBackward = animationObjectMovingBezierV[selectedObject.index].getLoopImageBackward();
-                        getLoopImageNumber = animationObjectMovingBezierV[selectedObject.index].getLoopImageNumber();
+                        bLoopImage = vAnimationObjectMovingBezier[selectedObject.index].getLoopImage();
+                        bLoopImageBackward = vAnimationObjectMovingBezier[selectedObject.index].getLoopImageBackward();
+                        guiObjectLoopImageNumber = vAnimationObjectMovingBezier[selectedObject.index].getLoopImageNumber();
                         break;
                     }
                 }
@@ -133,7 +135,7 @@ public:
                 guiObject.add(guiObjectLoopLabel.set("0 is Infitite"));
                 
                 guiObjectLoopImageNumber.addListener(this, &AnimationManager::guiOnSetLoopImageNumber);
-                guiObject.add(guiObjectLoopImageNumber.set("Loop Image Number", getLoopImageNumber, 0, 120));
+                guiObject.add(guiObjectLoopImageNumber.set("Loop Image Number", guiObjectLoopImageNumber, 0, 120));
                 
                 guiObjectLoopImageDuration.addListener(this, &AnimationManager::guiOnSetLoopImageDuration);
                 guiObject.add(guiObjectLoopImageDuration.set("Loop Image Duration", 5, 0, 60));
@@ -148,15 +150,15 @@ public:
                     }
                     case ANIMATION_CLASS_MOVING:
                     {
-                        bLoopMovement = animationObjectMovingV[selectedObject.index].getLoopMovement();
-                        bLoopMovementBackward = animationObjectMovingV[selectedObject.index].getLoopMovementBackward();
+                        bLoopMovement = vAnimationObjectMoving[selectedObject.index].getLoopMovement();
+                        bLoopMovementBackward = vAnimationObjectMoving[selectedObject.index].getLoopMovementBackward();
                         guiBuildLoopMovement(bLoopMovement, bLoopMovementBackward);
                         break;
                     }
                     case ANIMATION_CLASS_MOVING_BEZIER:
                     {
-                        bLoopMovement = animationObjectMovingBezierV[selectedObject.index].getLoopMovement();
-                        bLoopMovementBackward = animationObjectMovingBezierV[selectedObject.index].getLoopMovementBackward();
+                        bLoopMovement = vAnimationObjectMovingBezier[selectedObject.index].getLoopMovement();
+                        bLoopMovementBackward = vAnimationObjectMovingBezier[selectedObject.index].getLoopMovementBackward();
                         guiBuildLoopMovement(bLoopMovement, bLoopMovementBackward);
                         break;
                         
@@ -178,6 +180,7 @@ public:
                 guiPlayButtonStop.addListener(this, &AnimationManager::guiOnSetStop);
                 guiPlay.add(guiPlayButtonStop.set("Stop", false));
                 
+                guiPlay.add(guiPlayStringTime.set("Time", "00:00:00"));
                 break;
             }
         }
@@ -235,210 +238,191 @@ public:
             {
                 AnimationObjectBase * animationObjectBase = new AnimationObjectBase;
                 animationObjectBase->setup(fileDirectory, type, duration, x, y, w, h, r);
-                animationObjectBaseV.push_back(*animationObjectBase);
+                vAnimationObjectBase.push_back(*animationObjectBase);
                 delete animationObjectBase;
                 
-                AnimationManagerIndex animationManagerIndex;
+                AnimationManagerIndex managerIndex;
 
-                animationManagerIndex.index = AnimationObjectBaseIndexCount;
-                animationManagerIndex.animationClass = ANIMATION_CLASS_BASE;
-                animationManagerIndex.drawIndex = drawIndex;
-                animationIndices.push_back(animationManagerIndex);
+                managerIndex.index = animationObjectBaseIndexCount;
+                managerIndex.uniqueIndex = animationObjectUniqueIndexCount;
+                managerIndex.animationClass = ANIMATION_CLASS_BASE;
+                managerIndex.drawIndex = drawIndex;
+                animationIndices.push_back(managerIndex);
                 
-                AnimationObjectBaseIndexCount++;
+                animationObjectUniqueIndexCount++;
+                animationObjectBaseIndexCount++;
                 break;
             }
             case ANIMATION_TYPE_IMAGE_SINGLE_MOVING:
             {
                 AnimationObjectMoving * animationObjectMoving = new AnimationObjectMoving;
                 animationObjectMoving->setup(fileDirectory, type, duration, x, y, w, h, r);
-                animationObjectMovingV.push_back(*animationObjectMoving);
+                vAnimationObjectMoving.push_back(*animationObjectMoving);
                 delete animationObjectMoving;
                 
-                AnimationManagerIndex animationManagerIndex;
+                AnimationManagerIndex managerIndex;
                 
-                animationManagerIndex.index = AnimationObjectMovingIndexCount;
-                animationManagerIndex.animationClass = ANIMATION_CLASS_MOVING;
-                animationManagerIndex.drawIndex = drawIndex;
-                animationIndices.push_back(animationManagerIndex);
+                managerIndex.index = animationObjectMovingIndexCount;
+                managerIndex.uniqueIndex = animationObjectUniqueIndexCount;
+                managerIndex.animationClass = ANIMATION_CLASS_MOVING;
+                managerIndex.drawIndex = drawIndex;
+                animationIndices.push_back(managerIndex);
                 
-                AnimationObjectMovingIndexCount++;
+                animationObjectUniqueIndexCount++;
+                animationObjectMovingIndexCount++;
                 break;
             }
             case ANIMATION_TYPE_IMAGE_SINGLE_MOVING_BEZIER:
             {
                 AnimationObjectMovingBezier * animationObjectMovingBezier = new AnimationObjectMovingBezier;
                 animationObjectMovingBezier->setup(fileDirectory, type, duration, x, y, w, h, r);
-                animationObjectMovingBezierV.push_back(*animationObjectMovingBezier);
+                vAnimationObjectMovingBezier.push_back(*animationObjectMovingBezier);
                 delete animationObjectMovingBezier;
                 
-                AnimationManagerIndex animationManagerIndex;
+                AnimationManagerIndex managerIndex;
                 
-                animationManagerIndex.index = AnimationObjectMovingIndexCount;
-                animationManagerIndex.animationClass = ANIMATION_CLASS_MOVING_BEZIER;
-                animationManagerIndex.drawIndex = drawIndex;
-                animationIndices.push_back(animationManagerIndex);
+                managerIndex.index = animationObjectMovingIndexCount;
+                managerIndex.uniqueIndex = animationObjectUniqueIndexCount;
+                managerIndex.animationClass = ANIMATION_CLASS_MOVING_BEZIER;
+                managerIndex.drawIndex = drawIndex;
+                animationIndices.push_back(managerIndex);
                 
-                AnimationObjectMovingBezierIndexCount++;
+                animationObjectUniqueIndexCount++;
+                animationObjectMovingBezierIndexCount++;
                 break;
             }
             case ANIMATION_TYPE_IMAGE_MULTIPLE_STILL:
             {
                 AnimationObjectBase * animationObjectBase = new AnimationObjectBase;
                 animationObjectBase->setup(fileDirectory, type, duration, x, y, w, h, r);
-                animationObjectBaseV.push_back(*animationObjectBase);
+                vAnimationObjectBase.push_back(*animationObjectBase);
                 delete animationObjectBase;
                 
-                AnimationManagerIndex animationManagerIndex;
+                AnimationManagerIndex managerIndex;
                 
-                animationManagerIndex.index = AnimationObjectBaseIndexCount;
-                animationManagerIndex.animationClass = ANIMATION_CLASS_BASE;
-                animationManagerIndex.drawIndex = drawIndex;
-                animationIndices.push_back(animationManagerIndex);
+                managerIndex.index = animationObjectBaseIndexCount;
+                managerIndex.uniqueIndex = animationObjectUniqueIndexCount;
+                managerIndex.animationClass = ANIMATION_CLASS_BASE;
+                managerIndex.drawIndex = drawIndex;
+                animationIndices.push_back(managerIndex);
                 
-                AnimationObjectBaseIndexCount++;
+                animationObjectUniqueIndexCount++;
+                animationObjectBaseIndexCount++;
                 break;
             }
             case ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING:
             {
                 AnimationObjectMoving * animationObjectMoving = new AnimationObjectMoving;
                 animationObjectMoving->setup(fileDirectory, type, duration, x, y, w, h, r);
-                animationObjectMovingV.push_back(*animationObjectMoving);
+                vAnimationObjectMoving.push_back(*animationObjectMoving);
                 delete animationObjectMoving;
                 
-                AnimationManagerIndex animationManagerIndex;
-                animationManagerIndex.index = AnimationObjectMovingIndexCount;
-                animationManagerIndex.animationClass = ANIMATION_CLASS_MOVING;
-                animationManagerIndex.drawIndex = drawIndex;
-                animationIndices.push_back(animationManagerIndex);
+                AnimationManagerIndex managerIndex;
+                managerIndex.index = animationObjectMovingIndexCount;
+                managerIndex.uniqueIndex = animationObjectUniqueIndexCount;
+                managerIndex.animationClass = ANIMATION_CLASS_MOVING;
+                managerIndex.drawIndex = drawIndex;
+                animationIndices.push_back(managerIndex);
                 
-                AnimationObjectMovingIndexCount++;
+                animationObjectUniqueIndexCount++;
+                animationObjectMovingIndexCount++;
                 break;
             }
             case ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING_BEZIER:
             {
                 AnimationObjectMovingBezier * animationObjectMovingBezier = new AnimationObjectMovingBezier;
                 animationObjectMovingBezier->setup(fileDirectory, type, duration, x, y, w, h, r);
-                animationObjectMovingBezierV.push_back(*animationObjectMovingBezier);
+                vAnimationObjectMovingBezier.push_back(*animationObjectMovingBezier);
                 delete animationObjectMovingBezier;
                 
-                AnimationManagerIndex animationManagerIndex;
-                animationManagerIndex.index = AnimationObjectMovingBezierIndexCount;
-                animationManagerIndex.animationClass = ANIMATION_CLASS_MOVING_BEZIER;
-                animationManagerIndex.drawIndex = drawIndex;
-                animationIndices.push_back(animationManagerIndex);
+                AnimationManagerIndex managerIndex;
+                managerIndex.index = animationObjectMovingBezierIndexCount;
+                managerIndex.uniqueIndex = animationObjectUniqueIndexCount;
+                managerIndex.animationClass = ANIMATION_CLASS_MOVING_BEZIER;
+                managerIndex.drawIndex = drawIndex;
+                animationIndices.push_back(managerIndex);
                 
-                AnimationObjectMovingBezierIndexCount++;
+                animationObjectUniqueIndexCount++;
+                animationObjectMovingBezierIndexCount++;
                 break;
             }
         }
         sort(animationIndices.begin(), animationIndices.end(), compareDrawIndex);
     }
-    template<class T>
-    T * getAnimationObject(AnimationManagerIndex animationManagerIndex)
+    /*template<class T>
+    T & getAnimationObject(AnimationManagerIndex & managerIndex)
     {
-        switch (animationManagerIndex.animationClass)
+        switch (managerIndex.animationClass)
         {
             case ANIMATION_CLASS_BASE:
             {
-                return animationObjectBaseV[animationManagerIndex.index];
+                return vAnimationObjectBase[managerIndex.index];
             }
             case ANIMATION_CLASS_MOVING:
             {
-                return animationObjectMovingV[animationManagerIndex.index];
+                return vAnimationObjectMoving[managerIndex.index];
             }
             case ANIMATION_CLASS_MOVING_BEZIER:
             {
-                return animationObjectMovingBezierV[animationManagerIndex.index];
+                return vAnimationObjectMovingBezier[managerIndex.index];
+            }
+        }
+    }*/
+    
+    void createObjectEvent(AnimationManagerIndex & managerIndex, AnimationObjectEvents event, unsigned long long time)
+    {
+        AnimationEventContainer * eventContainer = new AnimationEventContainer;
+        eventContainer->bHasBeenTriggered = false;
+        eventContainer->objectUniqueIndex = managerIndex.uniqueIndex;
+        eventContainer->event = event;
+        eventContainer->timeTrigger = time;
+        
+        animationEvents.push_back(*eventContainer);
+        delete eventContainer;
+    }
+    void resetObjectEvents()
+    {
+        for (int i = 0; i < animationEvents.size(); i++)
+        {
+            animationEvents[i].bHasBeenTriggered = false;
+        }
+    }
+    AnimationManagerIndex & getObjectManagerIndexByUniqueIndex(int index)
+    {
+        for (int i = 0; animationIndices.size(); i++)
+        {
+            if (animationIndices[i].uniqueIndex == index)
+            {
+                return animationIndices[i];
             }
         }
     }
-    template<class T>
-    bool getLoopImageTemplate(T test)
+    /*template<class T>
+    bool getObjectLoopImageTemplate(T test)
     {
         return test.getLoopImage();
-    }
-    void setLoopImage(AnimationManagerIndex & animationManagerIndex, bool b)
+    }*/
+    AnimationObjectBase & getAnimationObject(AnimationManagerIndex & managerIndex)
     {
-        switch (animationManagerIndex.animationClass)
+        switch (managerIndex.animationClass)
         {
             case ANIMATION_CLASS_BASE:
             {
-                animationObjectBaseV[animationManagerIndex.index].setLoopImage(b);
-                break;
+                return vAnimationObjectBase[managerIndex.index];
             }
             case ANIMATION_CLASS_MOVING:
             {
-                animationObjectMovingV[animationManagerIndex.index].setLoopImage(b);
-                break;
+                return vAnimationObjectMoving[managerIndex.index];
             }
             case ANIMATION_CLASS_MOVING_BEZIER:
             {
-                animationObjectMovingBezierV[animationManagerIndex.index].setLoopImage(b);
-                break;
+                return vAnimationObjectMovingBezier[managerIndex.index];
             }
         }
     }
-    bool getLoopImage(AnimationManagerIndex & animationManagerIndex)
+    AnimationObjectMoving & getAnimationObjectMoving(AnimationManagerIndex & managerIndex)
     {
-        switch (animationManagerIndex.animationClass)
-        {
-            case ANIMATION_CLASS_BASE:
-            {
-                return animationObjectBaseV[animationManagerIndex.index].getLoopImage();
-            }
-            case ANIMATION_CLASS_MOVING:
-            {
-                return animationObjectMovingV[animationManagerIndex.index].getLoopImage();
-            }
-            case ANIMATION_CLASS_MOVING_BEZIER:
-            {
-                return animationObjectMovingBezierV[animationManagerIndex.index].getLoopImage();
-            }
-        }
-    }
-    void setLoopImageBackward(AnimationManagerIndex & animationManagerIndex, bool b)
-    {
-        switch (animationManagerIndex.animationClass)
-        {
-            case ANIMATION_CLASS_BASE:
-            {
-                animationObjectBaseV[animationManagerIndex.index].setLoopImageBackward(b);
-                break;
-            }
-            case ANIMATION_CLASS_MOVING:
-            {
-                animationObjectMovingV[animationManagerIndex.index].setLoopImageBackward(b);
-                break;
-            }
-            case ANIMATION_CLASS_MOVING_BEZIER:
-            {
-                animationObjectMovingBezierV[animationManagerIndex.index].setLoopImageBackward(b);
-                break;
-            }
-        }
-    }
-    bool getLoopMovement(AnimationManagerIndex & animationManagerIndex)
-    {
-        switch (animationManagerIndex.animationClass)
-        {
-            case ANIMATION_CLASS_BASE:
-            {
-                return false;
-            }
-            case ANIMATION_CLASS_MOVING:
-            {
-                return animationObjectMovingV[animationManagerIndex.index].getLoopMovement();
-            }
-            case ANIMATION_CLASS_MOVING_BEZIER:
-            {
-                return animationObjectMovingBezierV[animationManagerIndex.index].getLoopMovement();
-            }
-        }
-    }
-    void setLoopMovement(AnimationManagerIndex & animationManagerIndex, bool b)
-    {
-        switch (animationManagerIndex.animationClass)
+        switch (managerIndex.animationClass)
         {
             case ANIMATION_CLASS_BASE:
             {
@@ -446,53 +430,50 @@ public:
             }
             case ANIMATION_CLASS_MOVING:
             {
-                animationObjectMovingV[animationManagerIndex.index].setLoopMovement(b);
-                break;
+                return vAnimationObjectMoving[managerIndex.index];
             }
             case ANIMATION_CLASS_MOVING_BEZIER:
             {
-                animationObjectMovingBezierV[animationManagerIndex.index].setLoopMovement(b);
-                break;
+                return vAnimationObjectMovingBezier[managerIndex.index];
             }
         }
     }
-    void setLoopMovementBackward(AnimationManagerIndex & animationManagerIndex, bool b)
+    void setObjectLoopImage(AnimationManagerIndex & managerIndex, bool b)
     {
-        switch (animationManagerIndex.animationClass)
-        {
-            case ANIMATION_CLASS_BASE:
-            {
-                return;
-            }
-            case ANIMATION_CLASS_MOVING:
-            {
-                animationObjectMovingV[animationManagerIndex.index].setLoopMovementBackward(b);
-                break;
-            }
-            case ANIMATION_CLASS_MOVING_BEZIER:
-            {
-                animationObjectMovingBezierV[animationManagerIndex.index].setLoopMovementBackward(b);
-                break;
-            }
-        }
+        getAnimationObject(managerIndex).setLoopImage(b);
     }
-    bool getLoopMovementBackward(AnimationManagerIndex & animationManagerIndex)
+    
+    bool getObjectLoopImage(AnimationManagerIndex & managerIndex)
     {
-        switch(animationManagerIndex.animationClass)
-        {
-            case ANIMATION_CLASS_BASE:
-            {
-                return false;
-            }
-            case ANIMATION_CLASS_MOVING:
-            {
-                return animationObjectMovingV[animationManagerIndex.index].getLoopMovementBackward();
-            }
-            case ANIMATION_CLASS_MOVING_BEZIER:
-            {
-                return animationObjectMovingBezierV[animationManagerIndex.index].getLoopMovementBackward();
-            }
-        }
+        return getAnimationObject(managerIndex).getLoopImage();
+    }
+    void setObjectLoopImageBackward(AnimationManagerIndex & managerIndex, bool b)
+    {
+        getAnimationObject(managerIndex).setLoopImageBackward(b);
+    }
+    void getObjectLoopImageBackward(AnimationManagerIndex & managerIndex)
+    {
+        getAnimationObject(managerIndex).getLoopImageBackward();
+    }
+    void setObjectLoopMovement(AnimationManagerIndex & managerIndex, bool b)
+    {
+        getAnimationObjectMoving(managerIndex).setLoopMovement(b);
+    }
+    bool getObjectLoopMovement(AnimationManagerIndex & managerIndex)
+    {
+        getAnimationObjectMoving(managerIndex).getLoopMovement();
+    }
+    void setObjectLoopMovementBackward(AnimationManagerIndex & managerIndex, bool b)
+    {
+        getAnimationObjectMoving(managerIndex).setLoopMovementBackward(b);
+    }
+    bool getObjectLoopMovementBackward(AnimationManagerIndex & managerIndex)
+    {
+        getAnimationObjectMoving(managerIndex).getLoopMovementBackward();
+    }
+    void startObject(AnimationManagerIndex & managerIndex)
+    {
+        //getAnimationObject(managerIndex).start(ofGetElapsedTimeMicros());
     }
     bool isObjectBeingPressed(int i, int x, int y, ofVec2f & p, ofVec2f & d)
     {
@@ -531,33 +512,30 @@ public:
                             {
                                 case ANIMATION_CLASS_BASE:
                                 {
-                                    ofVec2f p = animationObjectBaseV[animationIndices[i].index].getPosition();
-                                    ofVec2f d = animationObjectBaseV[animationIndices[i].index].getDimension();
-                                    
-                                    if (bNewObjectSelected == false)
+                                    if (!bNewObjectSelected)
                                     {
+                                        ofVec2f p = vAnimationObjectBase[animationIndices[i].index].getPosition();
+                                        ofVec2f d = vAnimationObjectBase[animationIndices[i].index].getDimension();
                                         bNewObjectSelected = isObjectBeingPressed(i, x, y, p, d);
                                     }
                                     break;
                                 }
                                 case ANIMATION_CLASS_MOVING:
                                 {
-                                    ofVec2f p = animationObjectMovingV[animationIndices[i].index].getPosition();
-                                    ofVec2f d = animationObjectMovingV[animationIndices[i].index].getDimension();
-                                    
-                                    if (bNewObjectSelected == false)
+                                    if (!bNewObjectSelected)
                                     {
+                                        ofVec2f p = vAnimationObjectMoving[animationIndices[i].index].getPosition();
+                                        ofVec2f d = vAnimationObjectMoving[animationIndices[i].index].getDimension();
                                         bNewObjectSelected = isObjectBeingPressed(i, x, y, p, d);
                                     }
                                     break;
                                 }
                                 case ANIMATION_CLASS_MOVING_BEZIER:
                                 {
-                                    ofVec2f p = animationObjectMovingBezierV[animationIndices[i].index].getPosition();
-                                    ofVec2f d = animationObjectMovingBezierV[animationIndices[i].index].getDimension();
-                                    
-                                    if (bNewObjectSelected == false)
+                                    if (!bNewObjectSelected)
                                     {
+                                        ofVec2f p = vAnimationObjectMovingBezier[animationIndices[i].index].getPosition();
+                                        ofVec2f d = vAnimationObjectMovingBezier[animationIndices[i].index].getDimension();
                                         bNewObjectSelected = isObjectBeingPressed(i, x, y, p, d);
                                     }
                                     break;
@@ -609,7 +587,7 @@ public:
                     case ANIMATION_CLASS_MOVING:
                     {
                         //p.x =
-                        animationObjectMovingV[selectedObject.index].setPosition(offsetDragObject.x+x, offsetDragObject.y+y);
+                        vAnimationObjectMoving[selectedObject.index].setPosition(offsetDragObject.x+x, offsetDragObject.y+y);
                         break;
                     }
                     case ANIMATION_CLASS_MOVING_BEZIER:
@@ -620,22 +598,119 @@ public:
             }
         }
     }
+    
+    //TODO: It working, but formatting of the zeros need work
+    string formatePlayTimeString(unsigned long long time)
+    {
+        //stringstream ss;
+        //string stringTime = ofToString(time);
+        int timeRounded = time / 10000;
+        string timeMil;
+        string timeSec = "00";
+        string timeMin = "000";
+        if ((time >= 10000) && (time <= 1000000))
+        {
+            if (time >= 100000)
+            {
+                //cout << "Two Digit " << time << " Time Float " << time/1000000.0 << "\n";
+                timeMil = ofToString(timeRounded);
+            } else
+            {
+                //cout << "One Digit " << time << "\n";
+                timeMil = "0" + ofToString(time);
+            }
+        } else if ((time >= 1000000) && (time < 60000000))
+        {
+            int nearestHundred = ((timeRounded + 50) / 100 * 100);
+            timeMil = ofToString(timeRounded - nearestHundred + 50); //For some reason I have to add 50
+            nearestHundred /= 100;
+            if (nearestHundred < 10)
+            {
+                timeSec = "0" + ofToString(nearestHundred);
+            } else
+            {
+                timeSec = ofToString(nearestHundred);
+            }
+        }
+        else
+        {
+            int nearestHundred = ((timeRounded + 50) / 100 * 100);
+            timeMil = ofToString(timeRounded - nearestHundred + 50); //For some reason I have to add 5
+            nearestHundred /= 100;
+            if (nearestHundred >= 60)
+            {
+                int numberMinutes = nearestHundred / 60;
+                nearestHundred -= numberMinutes*60;
+                if (nearestHundred < 10)
+                {
+                    timeSec = "0" + ofToString(nearestHundred);
+                } else
+                {
+                    timeSec = ofToString(nearestHundred);
+                }
+                if (numberMinutes < 10)
+                {
+                    timeMin = "00" + ofToString(numberMinutes);
+                } else if (numberMinutes < 100)
+                {
+                    timeMin = "0" + ofToString(numberMinutes);
+                }
+            }
+        }
+        return timeMin + ":" + timeSec + ":" + timeMil;
+    }
     void threadedFunction()
     {
         while(isThreadRunning())
         {
             unsigned long long time = ofGetElapsedTimeMicros();
-            for (int i = 0; i < animationObjectBaseV.size(); i++)
+            float timef = ofGetElapsedTimef();
+            
+            for (int i = 0; i < animationEvents.size(); i++)
             {
-                animationObjectBaseV[i].update(time);
+                if (!animationEvents[i].bHasBeenTriggered)
+                {
+                    if (animationEvents[i].timeTrigger >= AnimationBackend::getCurrentPlayTime())
+                    {
+                        //TODO: events
+                        animationEvents[i].bHasBeenTriggered = true;
+                    }
+                }
             }
-            for (int i = 0; i < animationObjectMovingV.size(); i++)
+            
+            
+            
+            //TODO: Only call update if object actually needs updating
+            for (int i = 0; i < vAnimationObjectBase.size(); i++)
             {
-                animationObjectMovingV[i].update(time);
+                vAnimationObjectBase[i].update(time);
             }
-            for (int i = 0; i < animationObjectMovingBezierV.size(); i++)
+            for (int i = 0; i < vAnimationObjectMoving.size(); i++)
             {
-                animationObjectMovingBezierV[i].update(time);
+                //vAnimationObjectMoving[i].update(time, timef);
+            }
+            for (int i = 0; i < vAnimationObjectMovingBezier.size(); i++)
+            {
+                vAnimationObjectMovingBezier[i].update(time, timef);
+            }
+            
+            
+            
+            
+            
+            if (AnimationBackend::getMode() == ANIMATION_MODE_PLAY)
+            {
+                if ((AnimationBackend::getPlayState() == ANIMATION_PLAY_STATE_PLAY) || (AnimationBackend::getPlayState() == ANIMATION_PLAY_STATE_PAUSE))
+                {
+                    guiPlayStringTime = formatePlayTimeString(AnimationBackend::getCurrentPlayTime());
+                } else
+                {
+                    if (!guiPlayStopStringSet)
+                    {
+                        guiPlayStringTime = "000:00:00";
+                        guiPlayStopStringSet = true;
+                    }
+                }
             }
         }
     }
@@ -643,11 +718,11 @@ public:
     {
         if ((AnimationBackend::getMode() == ANIMATION_MODE_PLAY) && (AnimationBackend::getPlayState() == ANIMATION_PLAY_STATE_PLAY))
         {
-            unsigned long long playTime = AnimationBackend::calcCurrentPlayTime();
+            //unsigned long long playTime = AnimationBackend::calcCurrentPlayTime();
             
-            //for (int i = 0; i < animationObjectBaseV.size(); i++)
+            //for (int i = 0; i < vAnimationObjectBase.size(); i++)
             //{
-            //    animationObjectBaseV[i].update(time);
+            //    vAnimationObjectBase[i].update(time);
             //}
             
         }
@@ -666,6 +741,23 @@ public:
         utilImages[static_cast<int>(ANIMATION_MANAGER_UTIL_IMAGE_POINT)].draw(p.x+d.y-5, p.y+d.y-5);
         utilImages[static_cast<int>(ANIMATION_MANAGER_UTIL_IMAGE_POINT)].draw(p.x-5, p.y+d.y-5);
     }
+    void drawMovementLine(ofVec2f start, ofVec2f end)
+    {
+        ofSetColor(0, 0, 0);
+        
+        ofDrawLine(start.x, start.y, end.x, end.y);
+        
+        ofSetColor(255, 255, 255);
+        
+    }
+    void drawBezierCurve(ofVec2f a, ofVec2f b, ofVec2f c, ofVec2f d)
+    {
+        ofSetColor(0, 0, 0);
+        
+        ofCurvePoint(a, b, c, d, 0);
+        
+        ofSetColor(255, 255, 255);
+    }
     void draw()
     {
         for (int i = 0; i < animationIndices.size(); i++)
@@ -674,51 +766,56 @@ public:
             {
                 case ANIMATION_CLASS_BASE:
                 {
-                    animationObjectBaseV[animationIndices[i].index].draw();
+                    vAnimationObjectBase[animationIndices[i].index].draw();
                     switch(AnimationBackend::getMode())
                     {
                         case ANIMATION_MODE_EDIT:
                         case ANIMATION_MODE_VIEW:
                         {
-                            drawAssetBoxes(animationObjectBaseV[animationIndices[i].index].getPosition(), animationObjectBaseV[animationIndices[i].index].getDimension());
+                            drawAssetBoxes(vAnimationObjectBase[animationIndices[i].index].getPosition(), vAnimationObjectBase[animationIndices[i].index].getDimension());
+                            break;
                         }
                         case ANIMATION_MODE_PLAY:
                         {
-                            
+                            break;
                         }
                     }
                     break;
                 }
                 case ANIMATION_CLASS_MOVING:
                 {
-                    animationObjectMovingV[animationIndices[i].index].draw();
+                    vAnimationObjectMoving[animationIndices[i].index].draw();
                     switch(AnimationBackend::getMode())
                     {
                         case ANIMATION_MODE_EDIT:
                         case ANIMATION_MODE_VIEW:
                         {
-                            drawAssetBoxes(animationObjectMovingV[animationIndices[i].index].getPosition(), animationObjectMovingV[animationIndices[i].index].getDimension());
+                            drawAssetBoxes(vAnimationObjectMoving[animationIndices[i].index].getPosition(), vAnimationObjectMoving[animationIndices[i].index].getDimension());
+                            drawMovementLine(vAnimationObjectMoving[animationIndices[i].index].getPosition(), vAnimationObjectMoving[animationIndices[i].index].getMovementPoint().origin.position);
+                            break;
                         }
                         case ANIMATION_MODE_PLAY:
                         {
-                            
+                            break;
                         }
                     }
                     break;
                 }
                 case ANIMATION_CLASS_MOVING_BEZIER:
                 {
-                    animationObjectMovingBezierV[animationIndices[i].index].draw();
+                    vAnimationObjectMovingBezier[animationIndices[i].index].draw();
                     switch(AnimationBackend::getMode())
                     {
                         case ANIMATION_MODE_EDIT:
                         case ANIMATION_MODE_VIEW:
                         {
-                            drawAssetBoxes(animationObjectMovingBezierV[animationIndices[i].index].getPosition(), animationObjectMovingBezierV[animationIndices[i].index].getDimension());
+                            drawAssetBoxes(vAnimationObjectMovingBezier[animationIndices[i].index].getPosition(), vAnimationObjectMovingBezier[animationIndices[i].index].getDimension());
+                            break;
+                            
                         }
                         case ANIMATION_MODE_PLAY:
                         {
-                            
+                            break;
                         }
                     }
                     break;
@@ -759,13 +856,16 @@ public:
     void setModePlay()
     {
         AnimationBackend::setMode(ANIMATION_MODE_PLAY);
+        AnimationBackend::setPlayState(ANIMATION_PLAY_STATE_PLAY);
+        guiPlayStopStringSet = false;
         guiBuild(ANIMATION_MANAGER_GUI_WINDOW_PLAY);
     }
     void guiOnLoopImage(bool & b)
     {
         if (bObjectSelected)
         {
-            setLoopImage(selectedObject, b);
+            setObjectLoopImage(selectedObject, b);
+            //setObjectLoopImageTemplate(getAnimationObject(0), b);
         }
     }
     
@@ -775,11 +875,11 @@ public:
         {
             if (b)
             {
-                setLoopImage(selectedObject, b);
+                setObjectLoopImage(selectedObject, b);
                 guiObjectLoopImage = true;
             }
             
-            setLoopImageBackward(selectedObject, b);
+            setObjectLoopImageBackward(selectedObject, b);
         }
     }
     
@@ -798,7 +898,7 @@ public:
     {
         if (bObjectSelected)
         {
-            setLoopImage(selectedObject, b);
+            setObjectLoopImage(selectedObject, b);
         }
     }
     
@@ -808,12 +908,12 @@ public:
         {
             if (b)
             {
-                if (!getLoopMovementBackward(selectedObject))
+                if (!getObjectLoopMovementBackward(selectedObject))
                 {
-                    setLoopMovement(selectedObject, b);
+                    setObjectLoopMovement(selectedObject, b);
                 }
                 
-                setLoopMovementBackward(selectedObject, b);
+                setObjectLoopMovementBackward(selectedObject, b);
                 guiObjectLoopMovement = true;
             }
         }
@@ -887,6 +987,8 @@ public:
             guiPlayButtonPlay = b;
             guiPlayButtonPause = false;
             guiPlayButtonStop = false;
+            AnimationBackend::setPlayState(ANIMATION_PLAY_STATE_PLAY);
+            guiPlayStopStringSet = false;
         } else if ((guiPlayButtonPause == false) && (guiPlayButtonStop == false))
         {
             guiPlayButtonPlay = true;
@@ -901,6 +1003,8 @@ public:
             guiPlayButtonPlay = false;
             guiPlayButtonPause = b;
             guiPlayButtonStop = false;
+            guiPlayStopStringSet = false;
+            AnimationBackend::setPlayState(ANIMATION_PLAY_STATE_PAUSE);
         } else if ((guiPlayButtonPlay == false) && (guiPlayButtonStop == false))
         {
             guiPlayButtonStop = true;
@@ -914,22 +1018,28 @@ public:
             guiPlayButtonPlay = false;
             guiPlayButtonPause = false;
             guiPlayButtonStop = b;
+            guiPlayStopStringSet = false;
+            AnimationBackend::setPlayState(ANIMATION_PLAY_STATE_STOP);
         } else if ((guiPlayButtonPlay == false) && (guiPlayButtonPause == false))
         {
             guiPlayButtonStop = true;
         }
     }
 private:
-    int AnimationObjectBaseIndexCount;
-    vector<AnimationObjectBase> animationObjectBaseV;
+    int animationObjectBaseIndexCount;
+    vector<AnimationObjectBase> vAnimationObjectBase;
     
-    int AnimationObjectMovingIndexCount;
-    vector<AnimationObjectMoving> animationObjectMovingV;
+    int animationObjectMovingIndexCount;
+    vector<AnimationObjectMoving> vAnimationObjectMoving;
     
-    int AnimationObjectMovingBezierIndexCount;
-    vector<AnimationObjectMovingBezier> animationObjectMovingBezierV;
+    int animationObjectMovingBezierIndexCount;
+    vector<AnimationObjectMovingBezier> vAnimationObjectMovingBezier;
     
     vector<AnimationManagerIndex> animationIndices;
+    int animationObjectUniqueIndexCount;
+    
+    
+    vector<AnimationEventContainer> animationEvents;
     
     bool bObjectSelected;
     AnimationManagerIndex selectedObject;
@@ -977,10 +1087,12 @@ private:
     
     ofxPanel guiPlay;
     
+    bool guiPlayStopStringSet;
     //ofParameter<bool> guiButtonRewind;
     ofParameter<bool> guiPlayButtonPlay;
     //ofParameter<bool> guiButtonFastForward;
     ofParameter<bool> guiPlayButtonPause;
     ofParameter<bool> guiPlayButtonStop;
+    ofParameter<string> guiPlayStringTime;
     
 };

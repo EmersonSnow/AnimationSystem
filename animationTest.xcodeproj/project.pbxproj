@@ -70,6 +70,8 @@
 		89449E3044D456F7DE7BEA14 /* ofxPanel.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxPanel.h; path = ../../../addons/ofxGui/src/ofxPanel.h; sourceTree = SOURCE_ROOT; };
 		907C5B5E104864A2D3A25745 /* ofxToggle.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = ofxToggle.cpp; path = ../../../addons/ofxGui/src/ofxToggle.cpp; sourceTree = SOURCE_ROOT; };
 		9604B925D32EE39065747725 /* ofxBaseGui.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = ofxBaseGui.cpp; path = ../../../addons/ofxGui/src/ofxBaseGui.cpp; sourceTree = SOURCE_ROOT; };
+		B22BE1E11F5454F900FA6737 /* AnimationTemplate.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = AnimationTemplate.hpp; sourceTree = "<group>"; };
+		B249E84A1F55C08900B5D750 /* AnimationShaders.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = AnimationShaders.hpp; sourceTree = "<group>"; };
 		B2FCEE751F3F7F2F003D1901 /* AnimationObjectClasses.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AnimationObjectClasses.cpp; sourceTree = "<group>"; };
 		B2FCEE761F3F7F2F003D1901 /* AnimationObjectClasses.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = AnimationObjectClasses.hpp; sourceTree = "<group>"; };
 		B87C60311EC1FE841C1ECD89 /* ofxLabel.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxLabel.h; path = ../../../addons/ofxGui/src/ofxLabel.h; sourceTree = SOURCE_ROOT; };
@@ -188,8 +190,10 @@
 				0F1B214E4C27AC4673BF1F4A /* AnimationUtil.hpp */,
 				DE06575667E26AA29A7E84B5 /* AnimationBackend.cpp */,
 				225D4AA572E0054DB48CEEA6 /* AnimationBackend.hpp */,
+				B249E84A1F55C08900B5D750 /* AnimationShaders.hpp */,
 				B2FCEE751F3F7F2F003D1901 /* AnimationObjectClasses.cpp */,
 				B2FCEE761F3F7F2F003D1901 /* AnimationObjectClasses.hpp */,
+				B22BE1E11F5454F900FA6737 /* AnimationTemplate.hpp */,
 				3B8E6B67E75C2FD8821DDD77 /* AnimationManager.hpp */,
 			);
 			path = src;

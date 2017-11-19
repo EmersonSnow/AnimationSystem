@@ -5,13 +5,14 @@ void ofApp::setup()
 {
     int windowX = ofGetViewportWidth();
     int windowY = ofGetViewportHeight();
-    animation.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING_BEZIER, 5, 0, 0, 100, 100, 0);
-    animation.setMovementContainerPosition(animation.animationMovingContainer, 0, windowY/2);
-    animation.setMovementContainerRotation(animation.animationMovingContainer, 360);
+    animation.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING_BEZIER, 5000000, 0, 0, 100, 100, 0);
+    animation.setMovementPointPosition(animation.getMovementPoint(), 0, windowY/2);
+    animation.setMovementPointRotation(animation.getMovementPoint(), 360);
     animation.setLoopImage(true);
     animation.setLoopImageBackward(true);
     animation.setLoopMovement(true);
-    animation.setLoopMovementDuration(animation.getTotalDuration()/1000000);
+    animation.setMovementPointDuration(animation.getBezierCurve(), 5000000);
+    animation.start(ofGetElapsedTimeMicros());
     //animation.setCalcBezierPointNumber(1000);
     
     //animation1.setup("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING, 5, windowX-100, 0, 100, 100, 0);
@@ -41,10 +42,13 @@ void ofApp::setup()
     animation2.start(time);
     //animation3.start(time);*/
     
-    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 10, 10, 100, 100, 0, 5);
-    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 110, 10, 100, 100, 0, 3);
-    animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 210, 10, 100, 100, 0, 1);
+    //animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 10, 10, 100, 100, 0, 5);
+    //animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 110, 10, 100, 100, 0, 3);
+    //animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 210, 10, 100, 100, 0, 1);
     AnimationManagerIndex index = animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING, 5, 310, 10, 100, 100, 0, 2);
+    animationManager.startObject(index);
+    //auto object = animationManager.getAnimationObject<AnimationObjectBase>(index);
+    //animationManager.getAnimationObject(index).setMovementContainerPosition(animationManager.getAnimationObject(index).getMovementContainer(), 600, 600);
     //animationManager.getLoopImageTemplate();
     //animationManager.getAnimationObject(index);
     //animationManager.createAnimationImage("dev/", ANIMATION_TYPE_IMAGE_MULTIPLY_MOVING_BEZIER, 5, 10, 400, 100, 100, 0, 4);
@@ -53,7 +57,8 @@ void ofApp::setup()
 //--------------------------------------------------------------
 void ofApp::update(){
     unsigned long long time = ofGetElapsedTimeMicros();
-    animation.update(time);
+    float timef = ofGetElapsedTimef();
+    animation.update(time, timef);
     //animation1.update(time);
     //animation2.update(time);
     //animation3.update(time);

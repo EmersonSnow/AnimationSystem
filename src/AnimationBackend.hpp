@@ -45,14 +45,29 @@ public:
     ///Return the current play time
     static unsigned long long getCurrentPlayTime()
     {
-        if (mode != ANIMATION_MODE_PLAY)
-            return 0;
-        
+        switch(getPlayState())
+        {
+            case ANIMATION_PLAY_STATE_PLAY:
+            {
+                timeCurrentPlay = ofGetElapsedTimeMicros() - timeStartPlay;
+                break;
+            }
+            case ANIMATION_PLAY_STATE_PAUSE:
+            {
+                timeCurrentPlay = timePause - timeStartPlay;
+                break;
+            }
+            case ANIMATION_PLAY_STATE_STOP:
+            {
+                timeCurrentPlay = 0;
+                break;
+            }
+        }
         return timeCurrentPlay;
     }
     
     ///Calcuate and return current play time, should be called every play tick
-    static unsigned long long calcCurrentPlayTime()
+    /*static unsigned long long calcCurrentPlayTime()
     {
         //if (mode != ANIMATION_MODE_PLAY)
         //    return 0;
@@ -61,7 +76,7 @@ public:
         
         timeCurrentPlay = ofGetElapsedTimeMicros() - timeStartPlay;
         return timeCurrentPlay;
-    }
+    }*/
     
     /*///Possible function, would require a lot of coding to make
     void setCurrentPlayTime(unsigned long long timePlay)
@@ -75,13 +90,14 @@ public:
         //    return;
         switch(_playState)
         {
-            case ANIMATION_PLAY_STATE_STOPPED:
+            case ANIMATION_PLAY_STATE_STOP:
             {
                 timeCurrentPlay = 0;
                 timeStartPlay = 0;
+                timePause = 0;
                 break;
             }
-            case ANIMATION_PLAY_STATE_PAUSED:
+            case ANIMATION_PLAY_STATE_PAUSE:
             {
                 timePause = ofGetElapsedTimeMicros();
                 break;
@@ -90,18 +106,21 @@ public:
             {
                 switch(playState)
                 {
-                    case ANIMATION_PLAY_STATE_STOPPED:
+                    case ANIMATION_PLAY_STATE_STOP:
                     {
                         timeStartPlay = ofGetElapsedTimeMicros();
                         break;
                     }
-                    case ANIMATION_PLAY_STATE_PAUSED:
+                    case ANIMATION_PLAY_STATE_PAUSE:
                     {
                         timeStartPlay = timeStartPlay+(ofGetElapsedTimeMicros()-timePause);
                         break;
                     }
                     case ANIMATION_PLAY_STATE_PLAY:
                     {
+                        //Do nothing already playing
+                        //setPlayState(ANIMATION_PLAY_STATE_STOPPED);
+                        //timeStartPlay = ofGetElapsedTimeMicros();
                         break;
                     }
                 }
@@ -144,6 +163,23 @@ public:
         return animationImages.size()-1;
     }
     
+    static ofImage & getDrawImage(int containerIndex, int imageIndex)
+    {
+        if (containerIndex >= animationImages.size())
+            return;
+        if (imageIndex >= animationImages[containerIndex].images.size())
+            return;
+        
+        return animationImages[containerIndex].images[imageIndex];
+    }
+    
+    static int getNumberImages(int containerIndex)
+    {
+        if (containerIndex >= animationImages.size())
+            return;
+        
+        return animationImages[containerIndex].images.size();
+    }
 private:
     static AnimationEngineMode mode;
     static AnimationPlayState playState;

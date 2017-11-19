@@ -13,10 +13,12 @@
 #include "AnimationDefinitions.hpp"
 #include "AnimationUtil.hpp"
 #include "AnimationBackend.hpp"
+#include "AnimationShaders.hpp"
 
 //TODO Add movement finsihed bool
 //TODO add image animating finished bool
 //TODO add bool if image dies on finish
+//TODO Possibly change getBezierCurve and getMovementPoint to a generic function that returns the correct data type
 /*class vec2i
  {
  public:
@@ -38,7 +40,7 @@ public:
         bInUse = false;
         bStart = false;
         
-        bImageDurationSetManually = false;
+        //bImageDurationSetManually = false;
         
         bImageMultiple = false;
         
@@ -59,7 +61,7 @@ public:
         timeStartLoopImageCycle = 0;
         
         //bImagesLoaded = false;
-        imageDrawIndex = 0;
+        //imageInstance.drawIndex = 0;
         //imageNumber = 0;
         
         bImagesFinished = false;
@@ -80,8 +82,7 @@ public:
         
         loadImagesFromDirectory(fileDirectory);
         
-        position.x = x;
-        position.y = y;
+        setPosition(x, y);
         setDimension(w, h);
         setRotation(r);
         
@@ -109,7 +110,6 @@ public:
         
         finishedState = ANIMATION_FINISH_STATE_STATIC;
         
-        durationImages.clear();
         //durationImageMicros = 0;
         //durationEachImageMicros = 0;
         timeStartPlay = 0;
@@ -129,43 +129,15 @@ public:
     {
         return bInUse;
     }
-    virtual unsigned long long setTotalDuration(float duration)
+    virtual void setTotalDuration(unsigned long long duration)
     {
-        unsigned long long durationl = (duration * 1000000);
-        durationTotal = durationl;
-        
-        /*if (bImagesLoaded)
-        {
-            if (bImageDurationSetManually)
-            {
-                unsigned long long durationCount = 0;
-                for (int i = 0; i < durationImages.size(); i++)
-                {
-                    durationCount += durationImages[i];
-                }
-                
-                if (durationCount < durationTotal)
-                {
-                    durationImages[durationImages.size()-1] = durationTotal - durationCount;
-                } else if (durationCount > durationTotal)
-                {
-                    durationImages[durationImages.size()-1] = durationCount - durationTotal;
-                }
-            } else
-            {
-                unsigned long long durationPreImage = durationl/images.size();
-                for (int i = 0; i < durationImages.size(); i++)
-                {
-                    durationImages[i] = durationPreImage;
-                }
-            }
-        }*/
+        durationTotal = duration;
     }
     virtual unsigned long long getTotalDuration()
     {
         return durationTotal;
     }
-    virtual void setDurationPreImage(int imageIndex, float duration)
+    /*virtual void setDurationPreImage(int imageIndex, float duration)
     {
         if (!bImagesLoaded || (imageIndex >= images.size()))
             return;
@@ -175,14 +147,14 @@ public:
         unsigned long long durationCount = 0;
         if (bImagesLoaded)
         {
-            for (int i = 0; i < durationImages.size(); i++)
+            for (int i = 0; i < imageInstance.durations.size(); i++)
             {
                 if (i == imageIndex)
                 {
                     durationCount += duration;
                 } else
                 {
-                    durationCount += durationImages[i];
+                    durationCount += imageInstance.durations[i];
                 }
             }
             
@@ -192,37 +164,37 @@ public:
                 return;
             } else
             {
-                durationImages[imageIndex] = durationl;
+                imageInstance.durations[imageIndex] = durationl;
                 bImageDurationSetManually = true;
             }
             
         }
-    }
+    }*/
     inline void setPosition(float x, float y)
     {
-        position.x = x;
-        position.y = y;
+        origin.position.x = x;
+        origin.position.y = y;
     }
     inline ofVec2f getPosition()
     {
-        return position;
+        return origin.position;
     }
     inline void setDimension(float w, float h)
     {
-        dimension.x = w;
-        dimension.y = h;
+        origin.dimension.x = w;
+        origin.dimension.y = h;
     }
     virtual ofVec2f getDimension()
     {
-        return dimension;
+        return origin.dimension;
     }
     inline void setRotation(float r)
     {
-        rotation = r;
+        origin.rotation = r;
     }
     inline void getRotation()
     {
-        return rotation;
+        return origin.rotation;
     }
     inline void setLoopImage(bool b)
     {
@@ -256,69 +228,32 @@ public:
         return loopImageNumber;
     }
     virtual void releaseImages()
-    {
-        for (int i = 0; i < images.size(); i++)
-        {
-            images.clear();
-        }
-        imageDrawIndex = 0;
-        imageNumber = 0;
-        bImagesLoaded = false;
+    {        imageInstance.containerIndex = -1;
+        imageInstance.drawIndex = 0;
+        imageInstance.durations.clear();
+        imageInstance.totalDuration = 0;
     }
     virtual void loadImagesFromDirectory(string fileDirectory)
     {
         releaseImages();
         //TEMP Clear image durations if new images are loaded
-        durationImages.clear();
-        bImageDurationSetManually = false;
         
-        imagesContainerIndex = AnimationBackend::loadImages(fileDirectory)
-       /*ofDirectory d(ofToDataPath(fileDirectory));
-        d.listDir();
-        d.sort();
-        
-        int numberImagesBuffered = images.size();
-        if (!bImageMultiple)
+        imageInstance.containerIndex = AnimationBackend::loadImages(fileDirectory);
+        int numImages = AnimationBackend::getNumberImages(imageInstance.containerIndex);
+        unsigned long long durationPerImage = getTotalDuration() / numImages;
+        for (int i = 0; i < numImages; i++)
         {
-            if (numberImagesBuffered > 0)
-            {
-                images[0].load(d.getFile(0));
-            } else
-            {
-                images.push_back(*new ofImage);
-                images[images.size()-1].load(d.getFile(0));
-                imageNumber++;
-            }
-            durationImages.push_back(durationTotal);
-        } else
-        {
-            unsigned long long durationPreImage = durationTotal/d.size();
-            for (int i = 0; i < d.size(); i++)
-            {
-                if (i < numberImagesBuffered)
-                {
-                    images[i].load(d.getFile(i));
-                    imageNumber++;
-                } else
-                {
-                    //ofImage image;
-                    //image.load(d.getFile(i));
-                    //images.push_back(image);
-                    images.push_back(*new ofImage);
-                    images[images.size()-1].load(d.getFile(i));
-                    imageNumber++;
-                }
-                durationImages.push_back(durationPreImage);
-            }
+            imageInstance.durations.push_back(durationPerImage);
         }
-        bImagesLoaded = true;*/
+        imageInstance.totalDuration = getTotalDuration();
+        
     }
-    virtual void setNextDrawImage(int i)
+    /*virtual void setNextDrawImage(int i)
     {
         if (i > imageNumber)
             return;
         imageNumber = i;
-    }
+    }*/
     virtual bool isPlaying()
     {
         return (bStart && isFinished());
@@ -354,7 +289,7 @@ public:
         //            return true;
         //        } else
         //        {
-        //            /*if (bInUse && (imageDrawIndex == imageNumber-1) & (ofGetElapsedTimeMicros() >= (timeStartPlay+durationImageMicros)))
+        //            /*if (bInUse && (imageInstance.drawIndex == imageNumber-1) & (ofGetElapsedTimeMicros() >= (timeStartPlay+durationImageMicros)))
         //            {
         //                return true;
         //            }
@@ -377,7 +312,7 @@ public:
     virtual void restart(unsigned long long time)
     {
         timeStartLoopImageCycle = 0;
-        imageDrawIndex = 0;
+        imageInstance.drawIndex = 0;
         timeStartPlay = time;
     }
     virtual bool getPlaying()
@@ -392,79 +327,51 @@ public:
     {
         if (bLoopForward)
         {
-            if (imageDrawIndex == 0)
+            if (imageInstance.drawIndex == 0)
             {
                 return 0;
-            } else if (imageDrawIndex == 1)
+            } else if (imageInstance.drawIndex == 1)
             {
-                return durationImages[0];
+                return imageInstance.durations[0];
             }
             unsigned long long duration = 0;
-            for (int i = 0; i <= imageDrawIndex-1; i++)
+            for (int i = 0; i <= imageInstance.drawIndex-1; i++)
             {
-                duration += durationImages[i];
+                duration += imageInstance.durations[i];
             }
             return duration;
         } else
         {
-            int imageIndex = images.size()-1;
-            if (imageDrawIndex == imageIndex)
+            int imageIndex = AnimationBackend::getNumberImages(imageInstance.containerIndex)-1;
+            if (imageInstance.drawIndex == imageIndex)
             {
                 return 0;
-            } else if (imageDrawIndex == imageIndex-1)
+            } else if (imageInstance.drawIndex == imageIndex-1)
             {
-                return durationImages[imageIndex-1];
+                return imageInstance.durations[imageIndex-1];
             }
             unsigned long long duration = 0;
-            for (int i = imageIndex; i > imageDrawIndex; i--)
+            for (int i = imageIndex; i > imageInstance.drawIndex; i--)
             {
-                duration += durationImages[i];
+                duration += imageInstance.durations[i];
             }
             return duration;
         }
         
     }
-    /*virtual void getNextDrawImage(unsigned long long time)
-     {
-     if (!bLoopImage)
-     {
-     
-     } else
-     {
-     if (bLoopImageBackward)
-     {
-     if (bLoopImageBackwardCycle)
-     {
-     
-     } else
-     {
-     
-     bLoopImageBackwardCycle = true;
-     }
-     }
-     } else
-     {
-     if (++imageDrawIndex >= imageNumber)
-     {
-     timeStartLoopImageCycle = ofGetElapsedTimeMicros();
-     imageDrawIndex = 0;
-     loopImageCount++;
-     }
-     }
-     }
-     }*/
     virtual void calcuateLoopImageState(unsigned long long time)
     {
+        int imageNumber = AnimationBackend::getNumberImages(imageInstance.containerIndex);
         switch(loopState)
         {
             case ANIMATION_LOOP_STATE_NONE:
             {
-                if (time >= (timeStartLoopImageCycle+durationImages[imageDrawIndex]+getPreviousDrawnImagesDuration(true)))
+                if (time >= (timeStartLoopImageCycle+imageInstance.durations[imageInstance.drawIndex]+getPreviousDrawnImagesDuration(true)))
                 {
-                    if (++imageDrawIndex >= imageNumber)
+                    if (++imageInstance.drawIndex >= imageNumber)
                     {
                         timeStartLoopImageCycle = time;
-                        imageDrawIndex = imageNumber-1;
+                        imageInstance.drawIndex = imageNumber-1;
                         bImagesFinished = true;
                         break;
                     }
@@ -475,19 +382,19 @@ public:
             {
                 if ((loopImageNumber == 0) || (loopImageCount < loopImageNumber))
                 {
-                    if (time >= (timeStartLoopImageCycle+durationImages[imageDrawIndex]+getPreviousDrawnImagesDuration(true)))
+                    if (time >= (timeStartLoopImageCycle+imageInstance.durations[imageInstance.drawIndex]+getPreviousDrawnImagesDuration(true)))
                     {
-                        if (++imageDrawIndex >= imageNumber)
+                        if (++imageInstance.drawIndex >= imageNumber)
                         {
                             timeStartLoopImageCycle = time;
-                            imageDrawIndex = imageNumber-1;
+                            imageInstance.drawIndex = imageNumber-1;
                             loopImageCount++;
                             if (bLoopImageBackward)
                             {
                                 loopState = ANIMATION_LOOP_STATE_BACKWARD;
                             } else
                             {
-                                imageDrawIndex = 0;
+                                imageInstance.drawIndex = 0;
                             }
                             break;
                         }
@@ -502,12 +409,12 @@ public:
             {
                 if ((loopImageNumber == 0) || (loopImageCount < loopImageNumber))
                 {
-                    if (time >= (timeStartLoopImageCycle+durationImages[imageDrawIndex]+getPreviousDrawnImagesDuration(false)))
+                    if (time >= (timeStartLoopImageCycle+imageInstance.durations[imageInstance.drawIndex]+getPreviousDrawnImagesDuration(false)))
                     {
-                        if (--imageDrawIndex <= 0)
+                        if (--imageInstance.drawIndex <= 0)
                         {
                             timeStartLoopImageCycle = time;
-                            imageDrawIndex = 0;
+                            imageInstance.drawIndex = 0;
                             loopImageCount++;
                             if (bLoopImageBackward)
                             {
@@ -570,12 +477,12 @@ public:
         //TODO rotation
         ofPushMatrix();
         {
-            ofTranslate(position.x+(dimension.x/2), position.y+(dimension.y/2), 0);
-            ofRotate(rotation, 0, 0, 1);
+            ofTranslate(origin.position.x+(origin.dimension.x/2), origin.position.y+(origin.dimension.y/2), 0);
+            ofRotate(origin.rotation, 0, 0, 1);
             ofPushMatrix();
             {
-                ofTranslate(-(position.x+(dimension.x/2)), -(position.y+(dimension.y/2)), 0);
-                Animationimages[imageDrawIndex].draw(position.x, position.y, dimension.x, dimension.y);
+                ofTranslate(-(origin.position.x+(origin.dimension.x/2)), -(origin.position.y+(origin.dimension.y/2)), 0);
+                AnimationBackend::getDrawImage(imageInstance.containerIndex, imageInstance.drawIndex).draw(origin.position.x, origin.position.y, origin.dimension.x, origin.dimension.y);
             }
         }
         ofPopMatrix();
@@ -600,18 +507,11 @@ protected:
     
     AnimtionFinishState finishedState;
     
-    bool bLoopImage;
-    bool bLoopImageBackward;
-    AnimationLoopState loopState;
-    int loopImageNumber;
-    int loopImageCount;
-    
-    bool bImagesFinished;
-    
     AnimationType type;
-    ofVec2f position;
+    /*ofVec2f position;
     ofVec2f dimension;
-    float rotation;
+    float rotation;*/
+    AnimationOrigin origin;
     
     float durationTotal;
     float durationMovement;
@@ -622,13 +522,23 @@ protected:
     unsigned long long timeStartLoopImageCycle;
     
     
-    bool bImageDurationSetManually;
+    bool bImagesFinished;
     bool bImageMultiple;
-    //bool bImagesLoaded;
-    int imageDrawIndex;
-    int imagesContainerIndex;
+    bool bImagesLoaded;
+    AnimationImageInstance imageInstance;
+    
+    bool bLoopImage;
+    bool bLoopImageBackward;
+    AnimationLoopState loopState;
+    int loopImageNumber;
+    int loopImageCount;
+    //vector<unsigned long> imageInstance.durations;
+   
+
+    
+    
     //int imageNumber;
-    vector<unsigned long> durationImages;
+    
     //vector<ofImage> images;
     
 };
@@ -650,19 +560,25 @@ public:
         loopMovementNumber = 0;
         loopMovementCount = 0;
         
-        timeLoopMovementDuration = 0;
+        //timeLoopMovementDuration = 0;
         timeLastMovementUpdate = 0;
         timeStartLoopMovementCyclef = 0.0;
-        timeLoopMovementDurationf = 0.0;
+        //animationMovementPoint.duration.f = 0.0;
         timeStartLoopMovementCycle = 0;
         timeLastMovementUpdate = 0;
         
-        setMovementContainerPosition(animationMovingContainer, 0, 0);
+        animationMovementPoint.bEndPoint = true;
+        setMovementPointPosition(animationMovementPoint, 0, 0);
         setCurrentDrawPosition(0, 0);
-        setMovementContainerDimension(animationMovingContainer, 0, 0);
+        setMovementPointDimension(animationMovementPoint, 0, 0);
         setCurrentDrawDimension(0, 0);
-        setMovementContainerRotation(animationMovingContainer, 0.0);
-        setCurrentDrawContainer(0.0);
+        setMovementPointRotation(animationMovementPoint, 0.0);
+        setCurrentDrawOrigin(0.0);
+    }
+    virtual void setup(string fileDirectory, AnimationType type, float duration, float x, float y, float w, float h, float r)
+    {
+        AnimationObjectBase::setup(fileDirectory, type, duration, x, y, w, h, r);
+        setMovementPointDuration(getMovementPoint(), duration*1000000);
     }
     virtual void reset(AnimationType type, float x = 0.0, float y = 0.0, float w = 0.0, float h = 0.0, float r = 0.0, float xDraw = 0.0, float yDraw = 0.0, float wDraw = 0.0, float hDraw = 0.0, float rDraw = 0.0)
     {
@@ -670,65 +586,74 @@ public:
         bLoopMovementBackward = false;
         bLoopMovementBackwardCycle = false;
         timeStartLoopMovementCycle = 0;
-        setMovementContainerPosition(animationMovingContainer, xDraw, yDraw);
+        setMovementPointPosition(animationMovementPoint, xDraw, yDraw);
         setCurrentDrawPosition(0, 0);
-        setMovementContainerDimension(animationMovingContainer, wDraw, hDraw);
+        setMovementPointDimension(animationMovementPoint, wDraw, hDraw);
         setCurrentDrawDimension(0, 0);
-        setMovementContainerRotation(animationMovingContainer, rDraw);
-        setCurrentDrawContainer(0.0);
+        setMovementPointRotation(animationMovementPoint, rDraw);
+        setCurrentDrawOrigin(0.0);
         AnimationObjectBase::reset(type, x, y, w, h, r);
     }
-    virtual void setMovementContainerPosition(AnimationMovingContainer & movingContainer, float x, float y)
+    virtual AnimationMovementPoint & getMovementPoint()
     {
-        movingContainer.position.x = x;
-        movingContainer.position.y = y;
+        return animationMovementPoint;
     }
-    virtual ofVec2f getMovementContainerPosition(AnimationMovingContainer & movingContainer)
+    virtual void setMovementPointDuration(AnimationMovementPoint & movementPoint, unsigned long long duration)
     {
-        return movingContainer.position;
+        movementPoint.duration.l = duration;
+        movementPoint.duration.f = duration/1000000.0;
+    }
+    virtual void setMovementPointPosition(AnimationMovementPoint & movementPoint, float x, float y)
+    {
+        movementPoint.origin.position.x = x;
+        movementPoint.origin.position.y = y;
+    }
+    virtual ofVec2f getMovementPointPosition(AnimationMovementPoint & movementPoint)
+    {
+        return movementPoint.origin.position;
     }
     virtual void setCurrentDrawPosition(float x, float y)
     {
-        currentDrawContainer.position.x = x;
-        currentDrawContainer.position.y = y;
+        origin.position.x = x;
+        origin.position.y = y;
     }
     virtual ofVec2f getCurrentDrawPosition()
     {
-        return currentDrawContainer.position;
+        return origin.position;
     }
-    virtual void setMovementContainerDimension(AnimationMovingContainer & movingContainer, float w, float h)
+    virtual void setMovementPointDimension(AnimationMovementPoint & movementPoint, float w, float h)
     {
-        movingContainer.dimension.x = w;
-        movingContainer.dimension.y = h;
+        movementPoint.origin.dimension.x = w;
+        movementPoint.origin.dimension.y = h;
     }
-    virtual ofVec2f getMovementContainerDimension(AnimationMovingContainer & movingContainer)
+    virtual ofVec2f getMovementPointDimension(AnimationMovementPoint & movementPoint)
     {
-        return movingContainer.dimension;
+        return movementPoint.origin.dimension;
     }
     virtual void setCurrentDrawDimension(float w, float h)
     {
-        currentDrawContainer.dimension.x = w;
-        currentDrawContainer.dimension.y = h;
+        currentDrawOrigin.dimension.x = w;
+        currentDrawOrigin.dimension.y = h;
     }
     virtual ofVec2f getCurrentDrawDimension()
     {
-        return currentDrawContainer.dimension;
+        return currentDrawOrigin.dimension;
     }
-    virtual void setMovementContainerRotation(AnimationMovingContainer & movingContainer, float r)
+    virtual void setMovementPointRotation(AnimationMovementPoint & movementPoint, float r)
     {
-        movingContainer.rotation = r;
+        movementPoint.origin.rotation = r;
     }
-    virtual float getEndDrawRotation(AnimationMovingContainer & movingContainer)
+    virtual float getEndDrawRotation(AnimationMovementPoint & movementPoint)
     {
-        return movingContainer.rotation;
+        return movementPoint.origin.rotation;
     }
-    virtual void setCurrentDrawContainer(float r)
+    virtual void setCurrentDrawOrigin(float r)
     {
-        currentDrawContainer.rotation = r;
+        currentDrawOrigin.rotation = r;
     }
-    virtual float getCurrentDrawContainer()
+    virtual float getCurrentDrawOrigin()
     {
-        return currentDrawContainer.rotation;
+        return currentDrawOrigin.rotation;
     }
     inline void setLoopMovement(bool b)
     {
@@ -751,30 +676,30 @@ public:
     {
         return bLoopMovementBackward;
     }
-    inline void setLoopMovementDuration(float d)
+    /*inline void setLoopMovementDuration(float d)
     {
         timeLoopMovementDuration = (unsigned long long)d*1000000;
-        timeLoopMovementDurationf = d;
-    }
-    inline void getLoopMovementDuration()
+        animationMovementPoint.duration.f = duration/1;
+    }*/
+    /*inline void getLoopMovementDuration()
     {
         return timeLoopMovementDuration;
-    }
+    }*/
     virtual void start(unsigned long long time)
     {
         AnimationObjectBase::start(time);
         timeLastMovementUpdate = time;
         timeStartLoopMovementCycle = time;
         timeStartLoopMovementCyclef = ofGetElapsedTimef();
-        setCurrentDrawPosition(position.x, position.y);
-        setCurrentDrawDimension(dimension.x, dimension.y);
-        setCurrentDrawContainer(rotation);
+        setCurrentDrawPosition(origin.position.x, origin.position.y);
+        setCurrentDrawDimension(origin.dimension.x, origin.dimension.y);
+        setCurrentDrawOrigin(origin.rotation);
     }
     virtual void restart(unsigned long long time)
     {
         AnimationObjectBase::restart(time);
         timeStartLoopMovementCycle = 0;
-        imageDrawIndex = 0;
+        imageInstance.drawIndex = 0;
         timeStartPlay = ofGetElapsedTimeMicros();
     }
     virtual void getNextLoopMovementCycle(unsigned long long time)
@@ -785,46 +710,57 @@ public:
             cout << "getNextLoopMovementCycle()\n";
         }
     }
-    virtual void calcuateMovement()
+    virtual void calcuateMovementForward(float timef)
+    {
+        
+        currentDrawOrigin.position.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, origin.position.x, animationMovementPoint.origin.position.x, &ofxeasing::linear::easeIn);
+        animationMovementPoint.origin.position.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, origin.position.y, animationMovementPoint.origin.position.y, &ofxeasing::linear::easeIn);
+        
+        currentDrawOrigin.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, origin.dimension.x, animationMovementPoint.origin.dimension.x, &ofxeasing::linear::easeIn);
+        currentDrawOrigin.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, origin.dimension.y, animationMovementPoint.origin.dimension.y, &ofxeasing::linear::easeIn);
+        
+        currentDrawOrigin.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, origin.rotation, animationMovementPoint.origin.rotation, &ofxeasing::linear::easeIn);
+    }
+    virtual void calcuateMovement(float timef)
     {
         //Moved to draw because we only need call this on draw
-        float timef = ofGetElapsedTimef();
         //float timeStartLoopMovementCyclef = float(timeStartLoopMovementCycle/1000000.0);
-        //float timeLoopMovementDurationf = (float(timeLoopMovementDuration)/1000000.0);
+        //float animationMovementPoint.duration.f = (float(timeLoopMovementDuration)/1000000.0);
         if (bLoopMovementBackward)
         {
             if (bLoopMovementBackwardCycle)
             {
-                currentDrawContainer.position.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, animationMovingContainer.position.x, position.x, &ofxeasing::linear::easeIn);
-                currentDrawContainer.position.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, animationMovingContainer.position.y, position.y, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.position.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, animationMovementPoint.origin.position.x, origin.position.x, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.position.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, animationMovementPoint.origin.position.y, origin.position.y, &ofxeasing::linear::easeIn);
                 
-                currentDrawContainer.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, animationMovingContainer.dimension.x, dimension.x, &ofxeasing::linear::easeIn);
-                currentDrawContainer.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, animationMovingContainer.dimension.y, dimension.y, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, animationMovementPoint.origin.dimension.x, origin.dimension.x, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, animationMovementPoint.origin.dimension.y, origin.dimension.y, &ofxeasing::linear::easeIn);
                 
-                currentDrawContainer.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, animationMovingContainer.rotation, rotation, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationMovementPoint.duration.f, animationMovementPoint.origin.rotation, origin.rotation, &ofxeasing::linear::easeIn);
             } else
             {
-                currentDrawContainer.position.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, position.x, animationMovingContainer.position.x, &ofxeasing::linear::easeIn);
-                currentDrawContainer.position.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, position.y, animationMovingContainer.position.y, &ofxeasing::linear::easeIn);
-                
-                currentDrawContainer.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.x, animationMovingContainer.position.x, &ofxeasing::linear::easeIn);
-                currentDrawContainer.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.y, animationMovingContainer.dimension.y, &ofxeasing::linear::easeIn);
-                
-                currentDrawContainer.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, rotation, animationMovingContainer.rotation, &ofxeasing::linear::easeIn);
+                calcuateMovementForward(timef);
                 
             }
         } else
         {
-            currentDrawContainer.position.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, position.x, animationMovingContainer.position.x, &ofxeasing::linear::easeIn);
-            animationMovingContainer.position.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, position.y, animationMovingContainer.position.y, &ofxeasing::linear::easeIn);
-            
-            currentDrawContainer.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.x, animationMovingContainer.dimension.x, &ofxeasing::linear::easeIn);
-            currentDrawContainer.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.y, animationMovingContainer.dimension.y, &ofxeasing::linear::easeIn);
-            
-            currentDrawContainer.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, rotation, animationMovingContainer.rotation, &ofxeasing::linear::easeIn);
+            calcuateMovementForward(timef);
         }
     }
-    virtual void update(unsigned long long time)
+    virtual void checkNextLoopMovementCycle(unsigned long long time, float timef)
+    {
+        if (bLoopMovement)
+        {
+            if (time > (timeStartLoopMovementCycle+animationMovementPoint.duration.l))
+            {
+                timeStartLoopMovementCycle = time;
+                timeStartLoopMovementCyclef = timef;
+                if (bLoopMovementBackward)
+                    bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
+            }
+        }
+    }
+    virtual void update(unsigned long long time, float timef)
     {
         //if (!bStart & !isFinished())
         //    return;
@@ -834,62 +770,68 @@ public:
         {
             case ANIMATION_MODE_EDIT:
             {
-                if (bLoopMovement)
-                {
-                    if (time > (timeStartLoopMovementCycle+timeLoopMovementDuration))
-                    {
-                        timeStartLoopMovementCycle = time;
-                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
-                        if (bLoopMovementBackward)
-                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
-                    }
-                }
+                checkNextLoopMovementCycle(time, timef);
                 if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
                 {
-                    calcuateMovement();
+                    calcuateMovement(timef);
                     timeLastMovementUpdate = time;
                 }
                 break;
             }
             case ANIMATION_MODE_VIEW:
             {
-                if (bLoopMovement)
-                {
-                    if (time > (timeStartLoopMovementCycle+timeLoopMovementDuration))
-                    {
-                        timeStartLoopMovementCycle = time;
-                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
-                        if (bLoopMovementBackward)
-                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
-                    }
-                }
+                checkNextLoopMovementCycle(time, timef);
                 if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
                 {
-                    calcuateMovement();
+                    calcuateMovement(timef);
                     timeLastMovementUpdate = time;
                 }
                 break;
             }
             case ANIMATION_MODE_PLAY:
             {
-                if (bLoopMovement)
-                {
-                    if (time > (timeStartLoopMovementCycle+timeLoopMovementDuration))
-                    {
-                        timeStartLoopMovementCycle = time;
-                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
-                        if (bLoopMovementBackward)
-                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
-                    }
-                }
+                checkNextLoopMovementCycle(time, timef);
                 if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
                 {
-                    calcuateMovement();
+                    calcuateMovement(timef);
                     timeLastMovementUpdate = time;
                 }
                 break;
             }
         }
+    }
+    virtual void drawOrigin()
+    {
+        ofPushMatrix();
+        {
+            ofTranslate(origin.position.x+(origin.dimension.x/2), origin.position.y+(origin.dimension.y/2), 0);
+            ofRotate(origin.rotation, 0, 0, 1);
+            ofPushMatrix();
+            {
+                ofTranslate(-(origin.position.x+(origin.dimension.x/2)), -(origin.position.y+(origin.dimension.y/2)), 0);
+                AnimationBackend::getDrawImage(imageInstance.containerIndex, imageInstance.drawIndex).draw(origin.position.x, origin.position.y, origin.dimension.x, origin.dimension.y);
+            }
+        }
+        ofPopMatrix();
+    }
+    virtual void drawPlaying()
+    {
+        ofPushMatrix();
+        {
+            ofTranslate(currentDrawOrigin.position.x+(currentDrawOrigin.dimension.x/2), currentDrawOrigin.position.y+(currentDrawOrigin.dimension.y/2), 0);
+            ofRotate(currentDrawOrigin.rotation, 0, 0, 1);
+            ofPushMatrix();
+            {
+                ofTranslate(-(currentDrawOrigin.position.x+(currentDrawOrigin.dimension.x/2)), -(currentDrawOrigin.position.y+(currentDrawOrigin.dimension.y/2)), 0);
+                AnimationBackend::getDrawImage(imageInstance.containerIndex, imageInstance.drawIndex).draw(currentDrawOrigin.position.x, currentDrawOrigin.position.y, currentDrawOrigin.dimension.x, currentDrawOrigin.dimension.y);
+            }
+            ofPopMatrix();
+        }
+        ofPopMatrix();
+    }
+    virtual void drawFinsihed()
+    {
+        
     }
     virtual void draw()
     {
@@ -898,66 +840,39 @@ public:
         {
             case ANIMATION_MODE_EDIT:
             {
-                ofPushMatrix();
-                {
-                    ofTranslate(position.x+(dimension.x/2), position.y+(dimension.y/2), 0);
-                    ofRotate(rotation, 0, 0, 1);
-                    ofPushMatrix();
-                    {
-                        ofTranslate(-(position.x+(dimension.x/2)), -(position.y+(dimension.y/2)), 0);
-                        images[imageDrawIndex].draw(position.x, position.y, dimension.x, dimension.y);
-                    }
-                }
-                ofPopMatrix();
+                
                 return;
             }
             case ANIMATION_MODE_VIEW:
             {
-                ofPushMatrix();
+                if (bStart)
                 {
-                    ofTranslate(position.x+(dimension.x/2), position.y+(dimension.y/2), 0);
-                    ofRotate(rotation, 0, 0, 1);
-                    ofPushMatrix();
-                    {
-                        ofTranslate(-(position.x+(dimension.x/2)), -(position.y+(dimension.y/2)), 0);
-                        images[imageDrawIndex].draw(position.x, position.y, dimension.x, dimension.y);
-                    }
+                    drawPlaying();
+                } else
+                {
+                    drawOrigin();
                 }
-                ofPopMatrix();
                 return;
             }
             case ANIMATION_MODE_PLAY:
             {
-                if (!bStart & !isFinished())
-                    return;
-                
-                calcuateMovement();
-                
-                ofPushMatrix();
+                if (bStart)
                 {
-                    ofTranslate(currentDrawContainer.position.x+(currentDrawContainer.dimension.x/2), currentDrawContainer.position.y+(currentDrawContainer.dimension.y/2), 0);
-                    ofRotate(currentDrawContainer.rotation, 0, 0, 1);
-                    ofPushMatrix();
-                    {
-                        ofTranslate(-(currentDrawContainer.position.x+(currentDrawContainer.dimension.x/2)), -(currentDrawContainer.position.y+(currentDrawContainer.dimension.y/2)), 0);
-                        images[imageDrawIndex].draw(currentDrawContainer.position.x, currentDrawContainer.position.y, currentDrawContainer.dimension.x, currentDrawContainer.dimension.y);
-                    }
-                    ofPopMatrix();
+                    drawPlaying();
+                } else
+                {
+                    drawOrigin();
                 }
-                ofPopMatrix();
-                
                 return;
             }
         }
     }
     
-    //TEMP
-    AnimationMovingContainer animationMovingContainer;
 protected:
-    //ofVec2f currentDrawContainer.position;
-    //ofVec2f currentDrawContainer.dimension;
-    //float  currentDrawContainer.rotation;
-    AnimationMovingContainer currentDrawContainer;
+    //ofVec2f currentDrawOrigin.position;
+    //ofVec2f currentDrawOrigin.dimension;
+    //float  currentDrawOrigin.rotation;
+    AnimationOrigin currentDrawOrigin;
     bool bLoopMovement;
     bool bLoopMovementBackward;
     bool bLoopMovementBackwardCycle;
@@ -965,14 +880,13 @@ protected:
     int loopMovementNumber;
     int loopMovementCount;
     
-    unsigned long long timeStartLoopMovementCycle;
-    unsigned long long timeLoopMovementDuration;
-    unsigned long long timeLastMovementUpdate;
     float timeStartLoopMovementCyclef;
-    float timeLoopMovementDurationf;
-    
-    
+    //float animationMovementPoint.duration.f;
+    unsigned long long timeStartLoopMovementCycle;
+    //unsigned long long timeLoopMovementDuration;
+    unsigned long long timeLastMovementUpdate;
 private:
+    AnimationMovementPoint animationMovementPoint;
 };
 
 
@@ -990,27 +904,36 @@ public:
         
         type = ANIMATION_TYPE_IMAGE_MULTIPLE_MOVING_BEZIER;
     }
+    virtual void setMovementPointDuration(AnimationBezierCurve & bezierCurve, unsigned long long duration)
+    {
+        bezierCurve.duration.l = duration;
+        bezierCurve.duration.f = duration/1000000.0;
+    }
     virtual void initialiseBezier()
     {
-        setBezierPoints(animationBezierContainer, 200, 400, 210, 110, 390, 210, 400, 400);
+        setBezierPoints(animationBezierCurve, 200, 400, 210, 110, 390, 210, 400, 400);
     }
-    virtual void setBezierPoint(AnimationBezierContainer & bezierContainer, int index, float x, float y)
+    virtual void setBezierCurve(AnimationBezierCurve & bezierCurve, int index, float x, float y)
     {
-        bezierContainer.points[index].x = x;
-        bezierContainer.points[index].y = y;
-        calculateBezierPositions(bezierContainer);
+        bezierCurve.curvePoints[index].x = x;
+        bezierCurve.curvePoints[index].y = y;
+        calculateBezierPositions(bezierCurve);
     }
-    void setBezierPoints(AnimationBezierContainer & bezierContainer, float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
+    virtual AnimationBezierCurve & getBezierCurve()
     {
-        bezierContainer.points[0].x = x1;
-        bezierContainer.points[0].y = y1;
-        bezierContainer.points[1].x = x2;
-        bezierContainer.points[1].y = y2;
-        bezierContainer.points[2].x = x3;
-        bezierContainer.points[2].y = y3;
-        bezierContainer.points[3].x = x4;
-        bezierContainer.points[3].y = y4;
-        calculateBezierPositions(bezierContainer);
+        return animationBezierCurve;
+    }
+    virtual void setBezierPoints(AnimationBezierCurve & bezierCurve, float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
+    {
+        bezierCurve.curvePoints[0].x = x1;
+        bezierCurve.curvePoints[0].y = y1;
+        bezierCurve.curvePoints[1].x = x2;
+        bezierCurve.curvePoints[1].y = y2;
+        bezierCurve.curvePoints[2].x = x3;
+        bezierCurve.curvePoints[2].y = y3;
+        bezierCurve.curvePoints[3].x = x4;
+        bezierCurve.curvePoints[3].y = y4;
+        calculateBezierPositions(bezierCurve);
     }
     /*virtual void setBezierPoint1(float x, float y)
      {
@@ -1054,18 +977,18 @@ public:
         
         return n1 + ( diff * perc );
     }
-    virtual void calculateBezierPositions(AnimationBezierContainer & bezierContainer)
+    virtual void calculateBezierPositions(AnimationBezierCurve & bezierCurve)
     {
-        bezierContainer.position.clear();
+        bezierCurve.curvePositions.clear();
         float numberCalc = (1.0/bezierPositionNumber);
         for( float i = 0 ; i < 1 ; i += numberCalc)
         {
-            int xa = calculateBezierPoint( bezierContainer.points[0].x , bezierContainer.points[1].x , i );
-            int ya = calculateBezierPoint( bezierContainer.points[0].y , bezierContainer.points[1].y , i );
-            int xb = calculateBezierPoint( bezierContainer.points[1].x , bezierContainer.points[2].x , i );
-            int yb = calculateBezierPoint( bezierContainer.points[1].y , bezierContainer.points[2].y , i );
-            int xc = calculateBezierPoint( bezierContainer.points[2].x , bezierContainer.points[3].x , i );
-            int yc = calculateBezierPoint( bezierContainer.points[2].y , bezierContainer.points[3].y , i );
+            int xa = calculateBezierPoint( bezierCurve.curvePoints[0].x , bezierCurve.curvePoints[1].x , i );
+            int ya = calculateBezierPoint( bezierCurve.curvePoints[0].y , bezierCurve.curvePoints[1].y , i );
+            int xb = calculateBezierPoint( bezierCurve.curvePoints[1].x , bezierCurve.curvePoints[2].x , i );
+            int yb = calculateBezierPoint( bezierCurve.curvePoints[1].y , bezierCurve.curvePoints[2].y , i );
+            int xc = calculateBezierPoint( bezierCurve.curvePoints[2].x , bezierCurve.curvePoints[3].x , i );
+            int yc = calculateBezierPoint( bezierCurve.curvePoints[2].y , bezierCurve.curvePoints[3].y , i );
             
             // The Blue Line
             int xm = calculateBezierPoint( xa , xb , i );
@@ -1078,7 +1001,7 @@ public:
             ofVec2f point;
             point.x = calculateBezierPoint( xm , xn , i );
             point.y = calculateBezierPoint( ym , yn , i );
-            bezierContainer.position.push_back(point);
+            bezierCurve.curvePositions.push_back(point);
         }
     }
     
@@ -1091,39 +1014,90 @@ public:
      {
      return bezierPoints[i];
      }*/
-    virtual void calcuateMovement()
+    virtual void calcuateMovementForward(float timef)
     {
-        float timef = ofGetElapsedTimef();
+        bezierDrawIndex = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f, 0, bezierPositionNumber, &ofxeasing::linear::easeIn);
+        
+        currentDrawOrigin.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f, origin.dimension.x, animationBezierCurve.origin.dimension.x, &ofxeasing::linear::easeIn);
+        currentDrawOrigin.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f, origin.dimension.y, animationBezierCurve.origin.dimension.y, &ofxeasing::linear::easeIn);
+        
+        currentDrawOrigin.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f, origin.rotation, animationBezierCurve.origin.rotation, &ofxeasing::linear::easeIn);
+    }
+    virtual void calcuateMovement(float timef)
+    {
         if (bLoopMovementBackward)
         {
             if (bLoopMovementBackwardCycle)
             {
-                bezierDrawIndex = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, bezierPositionNumber, 0, &ofxeasing::linear::easeIn);
+                bezierDrawIndex = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f, bezierPositionNumber, 0, &ofxeasing::linear::easeIn);
                 
-                currentDrawContainer.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, animationMovingContainer.dimension.x, dimension.x, &ofxeasing::linear::easeIn);
-                currentDrawContainer.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, animationMovingContainer.dimension.y, dimension.y, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f, animationBezierCurve.origin.dimension.x, origin.dimension.x, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f, animationBezierCurve.origin.dimension.y, origin.dimension.y, &ofxeasing::linear::easeIn);
                 
-                 currentDrawContainer.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf,animationMovingContainer.rotation, rotation, &ofxeasing::linear::easeIn);
+                 currentDrawOrigin.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+animationBezierCurve.duration.f,animationBezierCurve.origin.rotation, origin.rotation, &ofxeasing::linear::easeIn);
                 
             } else
             {
-                bezierDrawIndex = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+durationTotal, 0, bezierPositionNumber, &ofxeasing::linear::easeIn);
-                
-                currentDrawContainer.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.x, animationMovingContainer.dimension.x, &ofxeasing::linear::easeIn);
-                currentDrawContainer.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.y, animationMovingContainer.dimension.y, &ofxeasing::linear::easeIn);
-                
-                 currentDrawContainer.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, rotation, animationMovingContainer.rotation, &ofxeasing::linear::easeIn);
+                calcuateMovementForward(timef);
             }
         } else
         {
-            bezierDrawIndex = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, 0, bezierPositionNumber, &ofxeasing::linear::easeIn);
-            
-            currentDrawContainer.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.x, animationMovingContainer.dimension.x, &ofxeasing::linear::easeIn);
-            currentDrawContainer.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, dimension.y, animationMovingContainer.dimension.y, &ofxeasing::linear::easeIn);
-            
-             currentDrawContainer.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+timeLoopMovementDurationf, rotation, animationMovingContainer.rotation, &ofxeasing::linear::easeIn);
+            calcuateMovementForward(timef);
         }
     }
+    virtual void checkNextLoopMovementCycle(unsigned long long time, float timef)
+    {
+        if (bLoopMovement)
+        {
+            if (time > (timeStartLoopMovementCycle+animationBezierCurve.duration.l))
+            {
+                timeStartLoopMovementCycle = time;
+                timeStartLoopMovementCyclef = timef;
+                if (bLoopMovementBackward)
+                    bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
+            }
+        }
+    }
+    /*virtual void update(unsigned long long time, float timef)
+    {
+        //if (!bStart & !isFinished())
+        //    return;
+        AnimationObjectBase::update(time);
+        
+        switch(AnimationBackend::getMode())
+        {
+            case ANIMATION_MODE_EDIT:
+            {
+                checkNextLoopMovementCycle(time, timef);
+                if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
+                {
+                    calcuateMovement(timef);
+                    timeLastMovementUpdate = time;
+                }
+                break;
+            }
+            case ANIMATION_MODE_VIEW:
+            {
+                checkNextLoopMovementCycle(time, timef);
+                if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
+                {
+                    calcuateMovement(timef);
+                    timeLastMovementUpdate = time;
+                }
+                break;
+            }
+            case ANIMATION_MODE_PLAY:
+            {
+                checkNextLoopMovementCycle(time, timef);
+                if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
+                {
+                    calcuateMovement(timef);
+                    timeLastMovementUpdate = time;
+                }
+                break;
+            }
+        }
+    }*/
     virtual void draw()
     {
         //if (!bStart & !isFinished())
@@ -1132,12 +1106,12 @@ public:
         
         ofPushMatrix();
         {
-            ofTranslate(animationBezierContainer.position[bezierDrawIndex].x+(currentDrawContainer.dimension.x/2), animationBezierContainer.position[bezierDrawIndex].y+(currentDrawContainer.dimension.y/2), 0);
-            ofRotate( currentDrawContainer.rotation, 0, 0, 1);
+            ofTranslate(animationBezierCurve.curvePositions[bezierDrawIndex].x+(currentDrawOrigin.dimension.x/2), animationBezierCurve.curvePositions[bezierDrawIndex].y+(currentDrawOrigin.dimension.y/2), 0);
+            ofRotate( currentDrawOrigin.rotation, 0, 0, 1);
             ofPushMatrix();
             {
-                ofTranslate(-(animationBezierContainer.position[bezierDrawIndex].x+(currentDrawContainer.dimension.x/2)), -(animationBezierContainer.position[bezierDrawIndex].y+(currentDrawContainer.dimension.y/2)), 0);
-                images[imageDrawIndex].draw(animationBezierContainer.position[bezierDrawIndex].x, animationBezierContainer.position[bezierDrawIndex].y, currentDrawContainer.dimension.x, currentDrawContainer.dimension.y);
+                ofTranslate(-(animationBezierCurve.curvePositions[bezierDrawIndex].x+(currentDrawOrigin.dimension.x/2)), -(animationBezierCurve.curvePositions[bezierDrawIndex].y+(currentDrawOrigin.dimension.y/2)), 0);
+                AnimationBackend::getDrawImage(imageInstance.containerIndex, imageInstance.drawIndex).draw(animationBezierCurve.curvePositions[bezierDrawIndex].x, animationBezierCurve.curvePositions[bezierDrawIndex].y, currentDrawOrigin.dimension.x, currentDrawOrigin.dimension.y);
             }
         }
         ofPopMatrix();
@@ -1155,97 +1129,305 @@ protected:
     ofImage point;
     
 private:
-    AnimationBezierContainer animationBezierContainer;
+    AnimationBezierCurve animationBezierCurve;
     
 };
+
+
+//
 class AnimationObjectMovingMulitple : public AnimationObjectMoving
 {
-    void addMovementPoint(float x, float y, float w, float h)
+    
+    virtual void setOriginPoint(float x, float y, float w, float h, float r)
     {
-        AnimationMovingContainer * movementContainer = new AnimationMovingContainer;
-        movementContainer->position.x = x;
-        movementContainer->position.y = y;
-        movementContainer->dimension.x = w;
-        movementContainer->dimension.y = h;
         
-        animationMovementContainers.push_back(*movementContainer);
+    }
+    virtual void addMovementPoint(unsigned long long duration, float x, float y, float w, float h, float r)
+    {
+        AnimationMovementPoint * movementContainer = new AnimationMovementPoint;
+        movementContainer->duration.l = duration;
+        movementContainer->duration.f = duration/1000000.0;
+        movementContainer->origin.position.x = x;
+        movementContainer->origin.position.y = y;
+        movementContainer->origin.dimension.x = w;
+        movementContainer->origin.dimension.y = h;
+        movementContainer->origin.rotation = r;
+        movementContainer->index = animationMovementPoints.size();
+        
+        animationMovementPoints.push_back(*movementContainer);
         delete movementContainer;
     }
-    
-    void alterMovementPoint(int index, float x, float y, float w, float h)
+    virtual AnimationMovementPoint & getMovementPoint(int index)
     {
-        animationMovementContainers[index].position.x = x;
-        animationMovementContainers[index].position.y = y;
-        animationMovementContainers[index].dimension.x = w;
-        animationMovementContainers[index].dimension.y = h;
+        if (index >= animationMovementPoints.size())
+            return;
+        return animationMovementPoints[index];
+    }
+    virtual AnimationMovementPoint & getCurrentMovementPoint()
+    {
+        return animationMovementPoints[currentMovementContainerIndex];
+    }
+    virtual AnimationOrigin & getPreviousMovementOrigin()
+    {
+        if (bLoopMovement)
+        {
+            if (bLoopMovementBackward)
+            {
+                if (bLoopMovementBackwardCycle)
+                {
+                    int index = getCurrentMovementPoint().index;
+                    //if (index == animationMovementPoints.size()-1)
+                    //{
+                        //return static_cast<AnimationOrigin>(animationMovementPoints[index-1]);
+                    //}
+                    //return static_cast<AnimationOrigin>(animationMovementPoints[index+1]);
+                    if (index == 0)
+                    {
+                        return origin;
+                    } else /*if (index == animationMovementPoints.size()-1)*/
+                    {
+                        return getMovementPoint(index-1).origin;
+                    }
+                } else
+                {
+                    int index = getCurrentMovementPoint().index;
+                    /*if (index == animationMovementPoints.size()-1)
+                    {
+                        
+                    }*/
+                    return getMovementPoint(index-1).origin;
+                }
+            } else
+            {
+                int index = getCurrentMovementPoint().index;
+                return getMovementPoint(index-1).origin;
+            }
+        } else
+        {
+            int index = getCurrentMovementPoint().index;
+            return getMovementPoint(index-1).origin;
+        }
+    }
+    virtual unsigned long long getMovementPointsTotalDuration()
+    {
+        unsigned long long duration = 0;
+        for (int i = 0; i < animationMovementPoints.size(); i++)
+        {
+            duration += animationMovementPoints[i].duration.l;
+        }
+        return duration;
+    }
+    virtual float getMovementPointsTotalDurationFloat()
+    {
+        float duration = 0;
+        for (int i = 0; i < animationMovementPoints.size(); i++)
+        {
+            duration += animationMovementPoints[i].duration.f;
+        }
+        return duration;
+    }
+    /*virtual void alterMovementPoint(int index, float x, float y, float w, float h, float r)
+    {
+        if (animationMovementPoints.size() < index)
+            return;
+        
+        animationMovementPoints[index].position.x = x;
+        animationMovementPoints[index].position.y = y;
+        animationMovementPoints[index].dimension.x = w;
+        animationMovementPoints[index].dimension.y = h;
+        animationMovementPoints[index].rotation = r;
+    }
+    virtual void alterMovementPointDuration(AnimationMovementPoint & movementContainer, unsigned long long duration)
+    {
+        movementContainer.duration = duration;
+    }
+    virtual void alterMovementPointPosition(AnimationMovementPoint & movementContainer, float x, float y)
+    {
+        movementContainer.position.x = x;
+        movementContainer.position.y = y;
+    }
+    virtual void alterMovementPointDimension(AnimationMovementPoint & movementContainer, float w, float h)
+    {
+        movementContainer.dimension.x = w;
+        movementContainer.dimension.y = h;
+    }
+    virtual void alterMovementPointRotation(AnimationMovementPoint & movementContainer, float r)
+    {
+        movementContainer.rotation = r;
+    }
+    virtual void swapMovementPoint(int index, int withIndex)
+    {
+        iter_swap(animationMovementPoints.begin() + index, animationMovementPoints.begin() + withIndex);
+    }
+    virtual void removeMovementPoint(int index)
+    {
+        animationMovementPoints.erase(animationMovementPoints.begin()+index);
+    }*/
+    virtual unsigned long long getPreviousMovementPointsDuration(bool bLoopForward)
+    {
+        int numMovementContainers = animationMovementPoints.size();
+        if (bLoopForward)
+        {
+            if (currentMovementContainerIndex == 0)
+            {
+                return 0;
+            } else if (currentMovementContainerIndex == 1)
+            {
+                return animationMovementPoints[0].duration.l;
+            }
+            unsigned long long duration = 0;
+            for (int i = 0; i <= numMovementContainers-1; i++)
+            {
+                duration += animationMovementPoints[i].duration.l;
+            }
+            return duration;
+        } else
+        {
+            int movementIndex = numMovementContainers;
+            if (currentMovementContainerIndex == movementIndex)
+            {
+                return 0;
+            } else if (currentMovementContainerIndex == movementIndex-1)
+            {
+                return animationMovementPoints[movementIndex-1].duration.l;
+            }
+            unsigned long long duration = 0;
+            for (int i = movementIndex; i > numMovementContainers; i--)
+            {
+                duration += animationMovementPoints[i].duration.l;
+            }
+            return duration;
+        }
     }
     
-    void removeMovementPoint(int index)
+    virtual void getNextMovementPoint(unsigned long long time)
     {
-        animationMovementContainers.erase(animationMovementContainers.begin()+index);
+        if (bLoopMovement)
+        {
+            if (bLoopMovementBackward)
+            {
+                if (time > timeStartLoopMovementCycle+getPreviousMovementPointsDuration(bLoopMovementBackwardCycle))
+                {
+                    if (bLoopMovementBackwardCycle)
+                    {
+                        if (--currentMovementContainerIndex < 0)
+                        {
+                            currentMovementContainerIndex = 0;
+                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
+                        }
+                        timeStartLoopMovementCycle = time;
+                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
+                        
+                    } else
+                    {
+                        int movementContainerSize = animationMovementPoints.size();
+                        if (++currentMovementContainerIndex >= movementContainerSize)
+                        {
+                            currentMovementContainerIndex = movementContainerSize-1;
+                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
+                        }
+                        timeStartLoopMovementCycle = time;
+                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
+                    }
+                }
+            }
+            else
+            {
+                if (time > timeStartLoopMovementCycle+getPreviousMovementPointsDuration(true))
+                {
+                    int movementContainerSize = animationMovementPoints.size();
+                    if (++currentMovementContainerIndex >= movementContainerSize)
+                    {
+                        currentMovementContainerIndex = movementContainerSize-1;
+                    }
+                    timeStartLoopMovementCycle = time;
+                    timeStartLoopMovementCyclef = ofGetElapsedTimef();
+                }
+            }
+        } else
+        {
+            if (time > timeStartLoopMovementCycle+getPreviousMovementPointsDuration(true))
+            {
+                int movementContainerSize = animationMovementPoints.size();
+                if (++currentMovementContainerIndex >= movementContainerSize)
+                {
+                    currentMovementContainerIndex = movementContainerSize-1;
+                }
+                timeStartLoopMovementCycle = time;
+                timeStartLoopMovementCyclef = ofGetElapsedTimef();
+            }
+        }
     }
-    
-    virtual void update(unsigned long long time)
+    virtual void calcuateMovementForward(float timef)
+    {
+        currentDrawOrigin.position.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, origin.position.x, getCurrentMovementPoint().origin.position.x, &ofxeasing::linear::easeIn);
+        getCurrentMovementPoint().origin.position.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, origin.position.y, getCurrentMovementPoint().origin.position.y, &ofxeasing::linear::easeIn);
+        
+        currentDrawOrigin.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, origin.dimension.x, getCurrentMovementPoint().origin.dimension.x, &ofxeasing::linear::easeIn);
+        currentDrawOrigin.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, origin.dimension.y, getCurrentMovementPoint().origin.dimension.y, &ofxeasing::linear::easeIn);
+        
+        currentDrawOrigin.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, origin.rotation, getCurrentMovementPoint().origin.rotation, &ofxeasing::linear::easeIn);
+    }
+    virtual void calcuateMovement(float timef)
+    {
+        //Moved to draw because we only need call this on draw
+        //float timeStartLoopMovementCyclef = float(timeStartLoopMovementCycle/1000000.0);
+        //float animationMovementPoint.duration.f = (float(timeLoopMovementDuration)/1000000.0);
+        if (bLoopMovementBackward)
+        {
+            if (bLoopMovementBackwardCycle)
+            {
+                currentDrawOrigin.position.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, getCurrentMovementPoint().origin.position.x, origin.position.x, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.position.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, getCurrentMovementPoint().origin.position.y, origin.position.y, &ofxeasing::linear::easeIn);
+                
+                currentDrawOrigin.dimension.x = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, getCurrentMovementPoint().origin.dimension.x, origin.dimension.x, &ofxeasing::linear::easeIn);
+                currentDrawOrigin.dimension.y = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, getCurrentMovementPoint().origin.dimension.y, origin.dimension.y, &ofxeasing::linear::easeIn);
+                
+                currentDrawOrigin.rotation = ofxeasing::map_clamp(timef, timeStartLoopMovementCyclef, timeStartLoopMovementCyclef+getCurrentMovementPoint().duration.f, getCurrentMovementPoint().origin.rotation, origin.rotation, &ofxeasing::linear::easeIn);
+            } else
+            {
+                calcuateMovementForward(timef);
+                
+            }
+        } else
+        {
+            calcuateMovementForward(timef);
+        }
+    }    virtual void update(unsigned long long time, float timef)
     {
         //if (!bStart & !isFinished())
         //    return;
         AnimationObjectBase::update(time);
+        //AnimationObjectMoving::update(time);
         
         switch(AnimationBackend::getMode())
         {
             case ANIMATION_MODE_EDIT:
             {
-                if (bLoopMovement)
-                {
-                    if (time > (timeStartLoopMovementCycle+timeLoopMovementDuration))
-                    {
-                        timeStartLoopMovementCycle = time;
-                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
-                        if (bLoopMovementBackward)
-                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
-                    }
-                }
+                getNextMovementPoint(time);
                 if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
                 {
-                    calcuateMovement();
+                    calcuateMovement(timef);
                     timeLastMovementUpdate = time;
                 }
                 break;
             }
             case ANIMATION_MODE_VIEW:
             {
-                if (bLoopMovement)
-                {
-                    if (time > (timeStartLoopMovementCycle+timeLoopMovementDuration))
-                    {
-                        timeStartLoopMovementCycle = time;
-                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
-                        if (bLoopMovementBackward)
-                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
-                    }
-                }
+                getNextMovementPoint(time);
                 if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
                 {
-                    calcuateMovement();
+                    calcuateMovement(timef);
                     timeLastMovementUpdate = time;
                 }
                 break;
             }
             case ANIMATION_MODE_PLAY:
             {
-                if (bLoopMovement)
-                {
-                    if (time > (timeStartLoopMovementCycle+timeLoopMovementDuration))
-                    {
-                        timeStartLoopMovementCycle = time;
-                        timeStartLoopMovementCyclef = ofGetElapsedTimef();
-                        if (bLoopMovementBackward)
-                            bLoopMovementBackwardCycle = !bLoopMovementBackwardCycle;
-                    }
-                }
+                getNextMovementPoint(time);
                 if (time > (timeLastMovementUpdate+ANIMATION_CALCUATION_RATE))
                 {
-                    calcuateMovement();
+                    calcuateMovement(timef);
                     timeLastMovementUpdate = time;
                 }
                 break;
@@ -1256,6 +1438,7 @@ class AnimationObjectMovingMulitple : public AnimationObjectMoving
     
 protected:
     int currentMovementContainerIndex;
-    vector<AnimationMovingContainer> animationMovementContainers;
+    //animationMovementOrigin origin;
+    vector<AnimationMovementPoint> animationMovementPoints;
     
 };
